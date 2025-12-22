@@ -1,0 +1,147 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install WiX Toolset
+      run: dotnet tool install --global wix
+
+    - name: Get current version
+      id: version
+      run: |
+        $version = Get-Content VERSION -Raw
+        $version = $version.Trim()
+        $parts = $version.Split('.')
+        $major = [int]$parts[0]
+        $minor = [int]$parts[1]
+        $patch = [int]$parts[2]
+        $patch++
+        $newVersion = "$major.$minor.$patch"
+        echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
+        echo "New version: $newVersion"
+
+    - name: Update version file
+      run: |
+        "${{ steps.version.outputs.VERSION }}" | Out-File -FilePath VERSION -NoNewline
+
+    - name: Update project versions
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        
+        # Update Worker csproj
+        $workerProj = Get-Content "NewtService.Worker/NewtService.Worker.csproj" -Raw
+        if ($workerProj -notmatch '<Version>') {
+          $workerProj = $workerProj -replace '(<PropertyGroup>)', "`$1`n    <Version>$version</Version>"
+        } else {
+          $workerProj = $workerProj -replace '<Version>.*?</Version>', "<Version>$version</Version>"
+        }
+        $workerProj | Out-File "NewtService.Worker/NewtService.Worker.csproj" -NoNewline
+        
+        # Update Tray csproj
+        $trayProj = Get-Content "NewtService.Tray/NewtService.Tray.csproj" -Raw
+        if ($trayProj -notmatch '<Version>') {
+          $trayProj = $trayProj -replace '(<PropertyGroup>)', "`$1`n    <Version>$version</Version>"
+        } else {
+          $trayProj = $trayProj -replace '<Version>.*?</Version>', "<Version>$version</Version>"
+        }
+        $trayProj | Out-File "NewtService.Tray/NewtService.Tray.csproj" -NoNewline
+        
+        # Update WiX installer version
+        $wxs = Get-Content "installer/Package.wxs" -Raw
+        $wxs = $wxs -replace 'Version="[\d\.]+"', "Version=`"$version.0`""
+        $wxs | Out-File "installer/Package.wxs" -NoNewline
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish Worker
+      run: |
+        dotnet publish NewtService.Worker -c Release -o publish `
+          -p:PublishSingleFile=true `
+          -p:SelfContained=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -r win-x64
+
+    - name: Publish Tray
+      run: |
+        dotnet publish NewtService.Tray -c Release -o publish `
+          -p:PublishSingleFile=true `
+          -p:SelfContained=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -r win-x64
+
+    - name: Clean publish folder
+      run: |
+        Remove-Item publish\*.pdb -ErrorAction SilentlyContinue
+        Remove-Item publish\*.json -ErrorAction SilentlyContinue
+
+    - name: Build MSI Installer
+      run: |
+        cd installer
+        wix build Package.wxs -o ..\NewtServiceSetup.msi
+
+    - name: Commit version bump
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add VERSION
+        git commit -m "Bump version to ${{ steps.version.outputs.VERSION }}" || echo "No changes to commit"
+        git push || echo "Nothing to push"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        name: Newt Service v${{ steps.version.outputs.VERSION }}
+        body: |
+          ## Newt Service v${{ steps.version.outputs.VERSION }}
+          
+          Windows service wrapper for [Newt VPN](https://github.com/fosrl/newt).
+          
+          ### Installation
+          
+          **Option 1: MSI Installer (Recommended)**
+          1. Download `NewtServiceSetup.msi`
+          2. Run the installer
+          3. Enter your Pangolin connection details
+          4. Click Save
+          
+          **Option 2: Portable**
+          1. Download both `.exe` files to the same folder
+          2. Run `NewtService.Tray.exe`
+          3. Right-click tray icon → Install Service
+          4. Configure and Save
+          
+          ### Files
+          - `NewtServiceSetup.msi` - Windows installer
+          - `NewtService.Tray.exe` - Tray application (portable)
+          - `NewtService.Worker.exe` - Windows service (portable)
+        files: |
+          NewtServiceSetup.msi
+          publish/NewtService.Tray.exe
+          publish/NewtService.Worker.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -4,6 +4,8 @@ namespace NewtService.Tray;
 
 class Program
 {
+    public static bool ShowConfigOnStartup { get; private set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -12,6 +14,8 @@ class Program
         {
             return;
         }
+
+        ShowConfigOnStartup = args.Contains("--show-config");
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

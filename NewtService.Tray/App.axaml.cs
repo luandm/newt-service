@@ -19,6 +19,8 @@ public partial class App : Application
     private NativeMenuItem? _updateNowItem;
     private GitHubRelease? _availableUpdate;
     private DispatcherTimer? _statusTimer;
+    private DispatcherTimer? _updateCheckTimer;
+    private bool _isDownloading;
 
     public override void Initialize()
     {
@@ -35,12 +37,24 @@ public partial class App : Application
             _statusTimer.Tick += (_, _) => UpdateMenuState();
             _statusTimer.Start();
             
+            SetupDailyUpdateCheck();
+            
+            // Check if newt.exe needs to be downloaded on startup
+            EnsureNewtInstalledAsync();
+            
             UpdateMenuState();
+
+            // Show config window if launched with --show-config
+            if (Program.ShowConfigOnStartup)
+            {
+                Dispatcher.UIThread.Post(ShowMainWindow, DispatcherPriority.Background);
+            }
 
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.Exit += (_, _) =>
             {
                 _statusTimer?.Stop();
+                _updateCheckTimer?.Stop();
                 _trayIcon?.Dispose();
             };
         }
@@ -48,12 +62,82 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private async void EnsureNewtInstalledAsync()
+    {
+        if (File.Exists(ServiceConstants.NewtExecutablePath))
+            return;
+
+        await DownloadNewtAsync();
+    }
+
+    private async Task DownloadNewtAsync()
+    {
+        if (_isDownloading) return;
+        _isDownloading = true;
+
+        try
+        {
+            Directory.CreateDirectory(ServiceConstants.AppDataPath);
+            
+            ShowWindowsNotification("Newt VPN", "Downloading Newt client...");
+            
+            using var updater = new NewtUpdater();
+            var release = await updater.GetLatestReleaseAsync();
+            
+            if (release == null)
+            {
+                ShowWindowsNotification("Newt VPN", "Failed to download Newt client. Check your internet connection.");
+                return;
+            }
+
+            var success = await updater.DownloadAndInstallAsync(release);
+            
+            if (success)
+            {
+                ShowWindowsNotification("Newt VPN", $"Newt {release.TagName} installed successfully.");
+            }
+            else
+            {
+                ShowWindowsNotification("Newt VPN", "Failed to install Newt client.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowWindowsNotification("Newt VPN", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            _isDownloading = false;
+        }
+    }
+
+    private void SetupDailyUpdateCheck()
+    {
+        _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _updateCheckTimer.Tick += async (_, _) =>
+        {
+            var now = DateTime.Now;
+            if (now.Hour == 0 && now.Minute == 0)
+            {
+                await CheckForUpdatesAsync(showNotification: true);
+            }
+        };
+        _updateCheckTimer.Start();
+        
+        // Also check on startup (after a short delay)
+        Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30));
+            await Dispatcher.UIThread.InvokeAsync(() => CheckForUpdatesAsync(showNotification: true));
+        });
+    }
+
     private void SetupTrayIcon()
     {
         var menu = new NativeMenu();
         
         _installItem = new NativeMenuItem("Install Service");
-        _installItem.Click += (_, _) => InstallService();
+        _installItem.Click += async (_, _) => await InstallServiceAsync();
         menu.Items.Add(_installItem);
         
         _uninstallItem = new NativeMenuItem("Uninstall Service");
@@ -63,7 +147,7 @@ public partial class App : Application
         menu.Items.Add(new NativeMenuItemSeparator());
         
         var checkUpdateItem = new NativeMenuItem("Check for Updates");
-        checkUpdateItem.Click += async (_, _) => await CheckForUpdatesAsync();
+        checkUpdateItem.Click += async (_, _) => await CheckForUpdatesAsync(showNotification: false);
         menu.Items.Add(checkUpdateItem);
         
         _updateNowItem = new NativeMenuItem("Update Now");
@@ -112,33 +196,84 @@ public partial class App : Application
         }
     }
 
-    private async Task CheckForUpdatesAsync()
+    private async Task CheckForUpdatesAsync(bool showNotification)
     {
-        using var updater = new NewtUpdater();
-        var current = GetInstalledVersion();
-        var latest = await updater.GetLatestReleaseAsync();
-        
-        if (latest == null)
+        try
         {
-            ShowMainWindow();
-            return;
-        }
-        
-        if (current != latest.TagName)
-        {
-            _availableUpdate = latest;
-            if (_updateNowItem != null)
+            using var updater = new NewtUpdater();
+            var current = GetInstalledVersion();
+            var latest = await updater.GetLatestReleaseAsync();
+            
+            if (latest == null) return;
+            
+            if (current != latest.TagName)
             {
-                _updateNowItem.Header = $"Update Now ({latest.TagName})";
-                _updateNowItem.IsVisible = true;
+                _availableUpdate = latest;
+                if (_updateNowItem != null)
+                {
+                    _updateNowItem.Header = $"Update Now ({latest.TagName})";
+                    _updateNowItem.IsVisible = true;
+                }
+                
+                if (showNotification)
+                {
+                    ShowWindowsNotification(
+                        "Newt VPN Update Available",
+                        $"Version {latest.TagName} is available. Right-click the tray icon to update.");
+                }
+            }
+            else
+            {
+                _availableUpdate = null;
+                if (_updateNowItem != null)
+                    _updateNowItem.IsVisible = false;
             }
         }
-        else
+        catch
         {
-            _availableUpdate = null;
-            if (_updateNowItem != null)
-                _updateNowItem.IsVisible = false;
+            // Silently fail on update check errors
         }
+    }
+
+    private void ShowWindowsNotification(string title, string message)
+    {
+        if (_trayIcon != null)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    var ps = new ProcessStartInfo
+                    {
+                        FileName = "powershell",
+                        Arguments = $"-Command \"[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; " +
+                                    $"$template = [Windows.UI.Notifications.ToastTemplateType]::ToastText02; " +
+                                    $"$xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($template); " +
+                                    $"$text = $xml.GetElementsByTagName('text'); " +
+                                    $"$text[0].AppendChild($xml.CreateTextNode('{EscapeForPowerShell(title)}')) | Out-Null; " +
+                                    $"$text[1].AppendChild($xml.CreateTextNode('{EscapeForPowerShell(message)}')) | Out-Null; " +
+                                    $"$toast = [Windows.UI.Notifications.ToastNotification]::new($xml); " +
+                                    $"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Newt VPN').Show($toast)\"",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+                    Process.Start(ps)?.WaitForExit(5000);
+                }
+                catch
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (_trayIcon != null)
+                            _trayIcon.ToolTipText = message;
+                    });
+                }
+            });
+        }
+    }
+
+    private static string EscapeForPowerShell(string text)
+    {
+        return text.Replace("'", "''").Replace("\"", "`\"");
     }
 
     private async Task PerformUpdateAsync()
@@ -153,6 +288,7 @@ public partial class App : Application
         using var updater = new NewtUpdater();
         await updater.DownloadAndInstallAsync(_availableUpdate);
         
+        var version = _availableUpdate.TagName;
         _availableUpdate = null;
         if (_updateNowItem != null)
             _updateNowItem.IsVisible = false;
@@ -160,16 +296,36 @@ public partial class App : Application
         if (wasRunning)
             await ServiceControlHelper.StartServiceAsync();
         
+        ShowWindowsNotification("Newt VPN Updated", $"Successfully updated to version {version}");
+        
         UpdateMenuState();
     }
 
-    private void InstallService()
+    private async Task InstallServiceAsync()
     {
+        // Ensure newt.exe is downloaded before installing service
+        if (!File.Exists(ServiceConstants.NewtExecutablePath))
+        {
+            await DownloadNewtAsync();
+            
+            if (!File.Exists(ServiceConstants.NewtExecutablePath))
+            {
+                ShowWindowsNotification("Newt VPN", "Cannot install service: Newt client not downloaded.");
+                return;
+            }
+        }
+        
         var exePath = GetWorkerExePath();
-        if (exePath == null) return;
+        if (exePath == null)
+        {
+            ShowWindowsNotification("Newt VPN", "Cannot find service executable.");
+            return;
+        }
 
         RunScCommand($"create {ServiceConstants.ServiceName} binPath= \"{exePath}\" start= auto DisplayName= \"{ServiceConstants.ServiceDisplayName}\"");
         RunScCommand($"description {ServiceConstants.ServiceName} \"{ServiceConstants.ServiceDescription}\"");
+        
+        ShowWindowsNotification("Newt VPN", "Service installed successfully.");
         UpdateMenuState();
     }
 
@@ -177,6 +333,7 @@ public partial class App : Application
     {
         _ = ServiceControlHelper.StopServiceAsync().Result;
         RunScCommand($"delete {ServiceConstants.ServiceName}");
+        ShowWindowsNotification("Newt VPN", "Service uninstalled.");
         UpdateMenuState();
     }
 

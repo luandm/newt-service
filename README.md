@@ -2,59 +2,53 @@
 
 Windows service wrapper for the [Newt VPN client](https://github.com/fosrl/newt).
 
+## Download
+
+Download the latest release from the [Releases page](https://github.com/memesalot/newt-service/releases).
+
+- **NewtServiceSetup.msi** - Windows installer (recommended)
+- **NewtService.Tray.exe** + **NewtService.Worker.exe** - Portable version
+
+## Installation
+
+### MSI Installer (Recommended)
+
+1. Download and run `NewtServiceSetup.msi`
+2. Enter your Pangolin connection details (Endpoint, ID, Secret)
+3. Click **Save** - the service will auto-install and start
+
+### Portable
+
+1. Download both `.exe` files to the same folder
+2. Run `NewtService.Tray.exe`
+3. Right-click the tray icon → **Install Service**
+4. Click **Config**, enter your details, and **Save**
+
 ## Features
 
-- **Windows Service**: Runs Newt as a background Windows service
-- **Modern UI**: Built with [Avalonia UI](https://github.com/AvaloniaUI/Avalonia)
-- **System Tray**: Native tray icon with context menu
-- **Auto-Download**: Automatically downloads Newt from GitHub on first run
-
-## Requirements
-
-- Windows 10/11
-- .NET 8.0 Runtime
-
-## Usage
-
-1. Build and run:
-   ```powershell
-   dotnet build
-   dotnet run --project NewtService.Tray
-   ```
-
-2. Right-click the tray icon → **Install Service**
-
-3. Click **Config** and enter your Pangolin connection details:
-   - Endpoint
-   - ID
-   - Secret
-
-4. Click **Save**, then start the service
+- **Windows Service**: Runs Newt as a background service
+- **System Tray**: Control the service from the taskbar
+- **Auto-Update**: Notifies when new Newt versions are available
+- **Auto-Download**: Downloads Newt client from GitHub on first run
 
 ## Tray Menu
 
 | Option | Description |
 |--------|-------------|
-| Install Service | Install as Windows service (requires admin) |
-| Uninstall Service | Remove the Windows service |
-| Check for Updates | Check GitHub for new Newt versions |
-| Update Now | Download and install update (appears when available) |
-| Config | Open the configuration dashboard |
-| Exit | Close the tray application |
+| Install/Uninstall Service | Manage Windows service |
+| Check for Updates | Check for new Newt versions |
+| Config | Open configuration window |
+| Exit | Close tray application |
 
-## File Locations
+## Building
 
-| Item | Path |
-|------|------|
-| Newt executable | `%ProgramData%\NewtService\newt.exe` |
-| Configuration | `%ProgramData%\NewtService\config.json` |
-| Logs | `%ProgramData%\NewtService\logs\` |
+```powershell
+# Build executables
+dotnet publish NewtService.Worker -c Release -o publish -p:PublishSingleFile=true -p:SelfContained=true -r win-x64
+dotnet publish NewtService.Tray -c Release -o publish -p:PublishSingleFile=true -p:SelfContained=true -r win-x64
 
-## How It Works
-
-The service runs `newt.exe` with your configured credentials:
-```
-newt.exe --id <your-id> --secret <your-secret> --endpoint <your-endpoint>
+# Build MSI (requires WiX: dotnet tool install -g wix)
+cd installer && wix build Package.wxs -o ..\NewtServiceSetup.msi
 ```
 
 ## License

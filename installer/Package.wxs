@@ -54,7 +54,14 @@
             <ComponentRef Id="DesktopShortcut" />
         </Feature>
 
-        <!-- Custom actions to stop/remove service on uninstall -->
+        <!-- Launch app after install -->
+        <CustomAction Id="LaunchApp" 
+                      FileRef="TrayExe"
+                      ExeCommand="--show-config"
+                      Impersonate="yes"
+                      Return="asyncNoWait" />
+
+        <!-- Stop/remove service on uninstall -->
         <CustomAction Id="StopService" Execute="deferred" Impersonate="no" Return="ignore"
                       Directory="INSTALLFOLDER" ExeCommand="cmd.exe /c sc stop NewtVPN" />
         <CustomAction Id="DeleteService" Execute="deferred" Impersonate="no" Return="ignore"
@@ -66,6 +73,7 @@
             <Custom Action="KillTray" Before="StopService" Condition="REMOVE=&quot;ALL&quot;" />
             <Custom Action="StopService" Before="DeleteService" Condition="REMOVE=&quot;ALL&quot;" />
             <Custom Action="DeleteService" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
+            <Custom Action="LaunchApp" After="InstallFinalize" Condition="NOT REMOVE" />
         </InstallExecuteSequence>
 
     </Package>

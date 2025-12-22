@@ -29,6 +29,9 @@ packages/
 Thumbs.db
 .DS_Store
 
+## Cursor
+.cursorrules
+
 ## Installer outputs
 *.msi
 *.wixpdb
