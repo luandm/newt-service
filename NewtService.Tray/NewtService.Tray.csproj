@@ -14,6 +14,7 @@
     <FileDescription>Newt VPN Service Tray Application</FileDescription>
     <Company>Newt VPN</Company>
     <Copyright>MIT License</Copyright>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +31,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="Assets\icon.png" />
+    <EmbeddedResource Include="Assets\icon-256.png" />
   </ItemGroup>
 
 </Project>

@@ -470,34 +470,56 @@ public partial class App : Application
 
     private WindowIcon CreateTrayIcon(bool running)
     {
-        using var bitmap = new System.Drawing.Bitmap(32, 32);
-        using var g = System.Drawing.Graphics.FromImage(bitmap);
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.Clear(System.Drawing.Color.Transparent);
+        // Load base icon from embedded resource
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        using var stream = assembly.GetManifestResourceStream("NewtService.Tray.Assets.icon.png");
         
+        if (stream != null)
+        {
+            using var bitmap = new System.Drawing.Bitmap(stream);
+            using var result = new System.Drawing.Bitmap(32, 32);
+            using var g = System.Drawing.Graphics.FromImage(result);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.Clear(System.Drawing.Color.Transparent);
+            
+            // Clip to circle for round icon
+            using var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddEllipse(0, 0, 32, 32);
+            g.SetClip(path);
+            g.DrawImage(bitmap, 0, 0, 32, 32);
+            g.ResetClip();
+            
+            // Draw status indicator dot in corner
+            var statusColor = running 
+                ? System.Drawing.Color.FromArgb(76, 175, 80)
+                : System.Drawing.Color.FromArgb(200, 200, 200);
+            using var brush = new System.Drawing.SolidBrush(statusColor);
+            g.FillEllipse(brush, 20, 20, 11, 11);
+            using var pen = new System.Drawing.Pen(System.Drawing.Color.White, 1.5f);
+            g.DrawEllipse(pen, 20, 20, 11, 11);
+            
+            using var ms = new MemoryStream();
+            result.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+            return new WindowIcon(ms);
+        }
+        
+        // Fallback to simple colored circle
+        using var fallback = new System.Drawing.Bitmap(32, 32);
+        using var gFallback = System.Drawing.Graphics.FromImage(fallback);
+        gFallback.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        gFallback.Clear(System.Drawing.Color.Transparent);
         var color = running 
             ? System.Drawing.Color.FromArgb(76, 175, 80)
             : System.Drawing.Color.FromArgb(158, 158, 158);
+        using var fallbackBrush = new System.Drawing.SolidBrush(color);
+        gFallback.FillEllipse(fallbackBrush, 2, 2, 28, 28);
         
-        using var brush = new System.Drawing.SolidBrush(color);
-        g.FillEllipse(brush, 2, 2, 28, 28);
-        
-        using var pen = new System.Drawing.Pen(System.Drawing.Color.White, 2.5f);
-        if (running)
-        {
-            g.DrawLine(pen, 10, 16, 14, 20);
-            g.DrawLine(pen, 14, 20, 22, 12);
-        }
-        else
-        {
-            g.DrawLine(pen, 11, 11, 21, 21);
-            g.DrawLine(pen, 21, 11, 11, 21);
-        }
-        
-        using var ms = new MemoryStream();
-        bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        ms.Position = 0;
-        return new WindowIcon(ms);
+        using var msf = new MemoryStream();
+        fallback.Save(msf, System.Drawing.Imaging.ImageFormat.Png);
+        msf.Position = 0;
+        return new WindowIcon(msf);
     }
 
     private void ShowMainWindow()

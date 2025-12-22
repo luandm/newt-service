@@ -10,6 +10,7 @@
     <FileDescription>Newt VPN Windows Service</FileDescription>
     <Company>Newt VPN</Company>
     <Copyright>MIT License</Copyright>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
