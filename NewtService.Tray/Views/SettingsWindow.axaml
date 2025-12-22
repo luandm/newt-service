@@ -5,7 +5,7 @@
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
         Width="400"
-        Height="250"
+        Height="320"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="#1a1a2e">
@@ -45,13 +45,25 @@
         <TextBlock Grid.Row="0" Classes="header" Text="Settings" Margin="0,0,0,20"/>
         
         <!-- Settings List -->
-        <StackPanel Grid.Row="1" Spacing="16">
+        <StackPanel Grid.Row="1" Spacing="12">
+            <!-- Start on Boot Option -->
+            <Border Background="#252542" CornerRadius="8" Padding="16">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
+                        <TextBlock Classes="label" Text="Start on Windows Boot"/>
+                        <TextBlock Classes="description" Text="Automatically start the tray app when Windows starts" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                              IsChecked="{Binding StartOnBoot}"/>
+                </Grid>
+            </Border>
+            
             <!-- Delayed Start Option -->
             <Border Background="#252542" CornerRadius="8" Padding="16">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
-                        <TextBlock Classes="label" Text="Delayed Start"/>
-                        <TextBlock Classes="description" Text="Delay the start of Newt (ideal for slow network cards)" TextWrapping="Wrap"/>
+                        <TextBlock Classes="label" Text="Delayed Service Start"/>
+                        <TextBlock Classes="description" Text="Delay the start of Newt service (ideal for slow network cards)" TextWrapping="Wrap"/>
                     </StackPanel>
                     <CheckBox Grid.Column="1" VerticalAlignment="Center"
                               IsChecked="{Binding DelayedStart}"
