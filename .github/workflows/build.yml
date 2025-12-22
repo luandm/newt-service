@@ -3,6 +3,14 @@ name: Build and Release
 on:
   push:
     branches: [main, master]
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '**.sln'
+      - '**.axaml'
+      - '**.wxs'
+      - '**.manifest'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -40,12 +48,6 @@ jobs:
         
         # Update VERSION file with UTF8 no BOM
         [System.IO.File]::WriteAllText("VERSION", $newVersion, [System.Text.UTF8Encoding]::new($false))
-        
-        # Update WiX installer version
-        $wxsPath = "installer/Package.wxs"
-        $wxs = [System.IO.File]::ReadAllText($wxsPath)
-        $wxs = $wxs -replace 'Version="[\d\.]+"', "Version=`"$newVersion.0`""
-        [System.IO.File]::WriteAllText($wxsPath, $wxs, [System.Text.UTF8Encoding]::new($false))
 
     - name: Restore dependencies
       run: dotnet restore
@@ -76,13 +78,13 @@ jobs:
     - name: Build MSI Installer
       run: |
         cd installer
-        wix build Package.wxs -o ..\NewtServiceSetup.msi
+        wix build Package.wxs -d ProductVersion=${{ steps.version.outputs.VERSION }}.0 -o ..\NewtServiceSetup.msi
 
     - name: Commit version bump
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add VERSION installer/Package.wxs
+        git add VERSION
         git commit -m "Bump version to ${{ steps.version.outputs.VERSION }}" || echo "No changes to commit"
         git push || echo "Nothing to push"
 

@@ -8,6 +8,12 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    
+    <Product>Newt Service</Product>
+    <AssemblyTitle>Newt Service</AssemblyTitle>
+    <FileDescription>Newt VPN Service Tray Application</FileDescription>
+    <Company>Newt VPN</Company>
+    <Copyright>MIT License</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

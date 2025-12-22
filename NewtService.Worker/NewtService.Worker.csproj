@@ -4,6 +4,12 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    
+    <Product>Newt Service</Product>
+    <AssemblyTitle>Newt Service</AssemblyTitle>
+    <FileDescription>Newt VPN Windows Service</FileDescription>
+    <Company>Newt VPN</Company>
+    <Copyright>MIT License</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
