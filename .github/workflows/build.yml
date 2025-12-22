@@ -43,12 +43,15 @@ jobs:
       id: cache-wix
       uses: actions/cache@v4
       with:
-        path: ~/.dotnet/tools
-        key: ${{ runner.os }}-wix-toolset
+        path: |
+          ~/.dotnet/tools
+          ~/.wix
+        key: ${{ runner.os }}-wix-toolset-ui
 
     - name: Install WiX Toolset
-      if: steps.cache-wix.outputs.cache-hit != 'true'
-      run: dotnet tool install --global wix
+      run: |
+        dotnet tool install --global wix 2>$null || dotnet tool update --global wix
+        wix extension add WixToolset.UI.wixext --global 2>$null || echo "Extension already installed"
 
     - name: Get and bump version
       id: version
