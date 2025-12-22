@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NewtService.Tray.ViewModels"
+        x:Class="NewtService.Tray.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings"
+        Width="400"
+        Height="250"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#1a1a2e">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.header">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+        <Style Selector="TextBlock.description">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#8b8b9a"/>
+        </Style>
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#4CAF50"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#66BB6A"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Margin="24" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Classes="header" Text="Settings" Margin="0,0,0,20"/>
+        
+        <!-- Settings List -->
+        <StackPanel Grid.Row="1" Spacing="16">
+            <!-- Delayed Start Option -->
+            <Border Background="#252542" CornerRadius="8" Padding="16">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
+                        <TextBlock Classes="label" Text="Delayed Start"/>
+                        <TextBlock Classes="description" Text="Delay the start of Newt (ideal for slow network cards)" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                              IsChecked="{Binding DelayedStart}"
+                              IsEnabled="{Binding IsInstalled}"/>
+                </Grid>
+            </Border>
+        </StackPanel>
+        
+        <!-- Close Button -->
+        <Button Grid.Row="2" Classes="primary" Content="Close" 
+                HorizontalAlignment="Center" Margin="0,20,0,0"
+                Click="OnCloseClick"/>
+    </Grid>
+</Window>

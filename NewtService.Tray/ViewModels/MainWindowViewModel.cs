@@ -16,10 +16,10 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private string _endpoint = "";
     private string _clientId = "";
     private string _secret = "";
-    private string _updateButtonText = "Check for Update";
+    private string _updateButtonText = "Newt: Check";
     private bool _updateAvailable;
     private GitHubRelease? _availableUpdate;
-    private string _appUpdateButtonText = "Check App Update";
+    private string _appUpdateButtonText = "App: Check";
     private AppRelease? _availableAppUpdate;
 
     public string Status
@@ -102,6 +102,9 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public ICommand OpenGitHubCommand { get; }
     public ICommand OpenNewtLogsCommand { get; }
     public ICommand OpenAppLogsCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
+
+    public event Action? OnOpenSettings;
 
     public MainWindowViewModel()
     {
@@ -117,6 +120,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         OpenGitHubCommand = new RelayCommand(OpenGitHub);
         OpenNewtLogsCommand = new RelayCommand(OpenNewtLogs);
         OpenAppLogsCommand = new RelayCommand(OpenAppLogs);
+        OpenSettingsCommand = new RelayCommand(() => OnOpenSettings?.Invoke());
 
         LoadConfig();
         UpdateStatus();
@@ -297,7 +301,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (UpdateAvailable && _availableUpdate != null)
         {
-            UpdateButtonText = "Updating...";
+            UpdateButtonText = "Newt: Updating...";
             
             var wasRunning = IsRunning;
             if (wasRunning)
@@ -308,7 +312,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
             _availableUpdate = null;
             UpdateAvailable = false;
-            UpdateButtonText = "Check for Update";
+            UpdateButtonText = "Newt: Check";
 
             if (wasRunning)
                 await ServiceControlHelper.StartServiceAsync();
@@ -317,7 +321,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            UpdateButtonText = "Checking...";
+            UpdateButtonText = "Newt: Checking...";
             
             using var updater = new NewtUpdater();
             var current = File.Exists(ServiceConstants.VersionFilePath) 
@@ -327,9 +331,9 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
             if (latest == null)
             {
-                UpdateButtonText = "Check failed";
+                UpdateButtonText = "Newt: Check failed";
                 await Task.Delay(2000);
-                UpdateButtonText = "Check for Update";
+                UpdateButtonText = "Newt: Check";
                 return;
             }
 
@@ -337,13 +341,13 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             {
                 _availableUpdate = latest;
                 UpdateAvailable = true;
-                UpdateButtonText = $"Install Newt ({latest.TagName})";
+                UpdateButtonText = $"Newt: Install ({latest.TagName})";
             }
             else
             {
-                UpdateButtonText = "Up to date";
+                UpdateButtonText = "Newt: Up to date";
                 await Task.Delay(2000);
-                UpdateButtonText = "Check for Update";
+                UpdateButtonText = "Newt: Check";
             }
         }
     }
@@ -354,7 +358,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (_availableAppUpdate != null)
         {
-            AppUpdateButtonText = "Downloading...";
+            AppUpdateButtonText = "App: Downloading...";
             
             using var updater = new AppUpdater();
             updater.OnRequestExit += () => OnRequestExit?.Invoke();
@@ -363,14 +367,14 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             
             if (!success)
             {
-                AppUpdateButtonText = "Update failed";
+                AppUpdateButtonText = "App: Update failed";
                 await Task.Delay(2000);
                 updater.OpenReleasesPage();
             }
         }
         else
         {
-            AppUpdateButtonText = "Checking...";
+            AppUpdateButtonText = "App: Checking...";
             
             using var updater = new AppUpdater();
             var current = AppUpdater.GetCurrentVersion();
@@ -378,22 +382,22 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
             if (latest == null || current == null)
             {
-                AppUpdateButtonText = "Check failed";
+                AppUpdateButtonText = "App: Check failed";
                 await Task.Delay(2000);
-                AppUpdateButtonText = "Check App Update";
+                AppUpdateButtonText = "App: Check";
                 return;
             }
 
             if (CompareVersions(latest.Version, current) > 0)
             {
                 _availableAppUpdate = latest;
-                AppUpdateButtonText = $"Install App ({latest.TagName})";
+                AppUpdateButtonText = $"App: Install ({latest.TagName})";
             }
             else
             {
-                AppUpdateButtonText = "Up to date";
+                AppUpdateButtonText = "App: Up to date";
                 await Task.Delay(2000);
-                AppUpdateButtonText = "Check App Update";
+                AppUpdateButtonText = "App: Check";
             }
         }
     }

@@ -1,5 +1,3 @@
-using System.Security.AccessControl;
-using System.Security.Principal;
 using System.Text.Json;
 
 namespace NewtService.Core;
@@ -18,30 +16,34 @@ public class NewtConfig
 
     public static NewtConfig Load()
     {
-        AppLogger.Info($"Loading config from: {ServiceConstants.ConfigPath}");
+        try
+        {
+            AppLogger.Info($"Loading config from: {ServiceConstants.ConfigPath}");
+        }
+        catch { }
         
         if (!File.Exists(ServiceConstants.ConfigPath))
         {
-            AppLogger.Info("Config file does not exist");
+            try { AppLogger.Info("Config file does not exist"); } catch { }
             return new NewtConfig();
         }
 
         try
         {
             var json = File.ReadAllText(ServiceConstants.ConfigPath);
-            AppLogger.Info($"Config loaded: {json}");
+            try { AppLogger.Info($"Config loaded successfully"); } catch { }
             return JsonSerializer.Deserialize<NewtConfig>(json, JsonOptions) ?? new NewtConfig();
         }
         catch (Exception ex)
         {
-            AppLogger.Error($"Failed to load config: {ex.Message}");
+            try { AppLogger.Error($"Failed to load config: {ex.Message}"); } catch { }
             return new NewtConfig();
         }
     }
 
     public void Save()
     {
-        AppLogger.Info($"Saving config to: {ServiceConstants.ConfigPath}");
+        try { AppLogger.Info($"Saving config to: {ServiceConstants.ConfigPath}"); } catch { }
         
         try
         {
@@ -49,35 +51,17 @@ public class NewtConfig
             
             if (!Directory.Exists(dir))
             {
-                AppLogger.Info($"Creating directory: {dir}");
-                var dirInfo = Directory.CreateDirectory(dir);
-                try
-                {
-                    // Grant Users full control so both service and tray can access
-                    var security = dirInfo.GetAccessControl();
-                    var usersRule = new FileSystemAccessRule(
-                        new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
-                        FileSystemRights.FullControl,
-                        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-                        PropagationFlags.None,
-                        AccessControlType.Allow);
-                    security.AddAccessRule(usersRule);
-                    dirInfo.SetAccessControl(security);
-                    AppLogger.Info("Directory permissions set for Users");
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.Info($"Could not set directory permissions: {ex.Message}");
-                }
+                try { AppLogger.Info($"Creating directory: {dir}"); } catch { }
+                Directory.CreateDirectory(dir);
             }
             
             var json = JsonSerializer.Serialize(this, JsonOptions);
             File.WriteAllText(ServiceConstants.ConfigPath, json);
-            AppLogger.Info("Config saved successfully");
+            try { AppLogger.Info("Config saved successfully"); } catch { }
         }
         catch (Exception ex)
         {
-            AppLogger.Error($"Failed to save config: {ex.Message}");
+            try { AppLogger.Error($"Failed to save config: {ex.Message}"); } catch { }
             throw;
         }
     }

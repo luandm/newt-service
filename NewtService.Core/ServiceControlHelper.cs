@@ -89,6 +89,7 @@ public static class ServiceControlHelper
         try
         {
             using var sc = new ServiceController(ServiceConstants.ServiceName);
+            sc.Refresh();
             return sc.Status;
         }
         catch
@@ -112,6 +113,8 @@ public static class ServiceControlHelper
         try
         {
             using var sc = new ServiceController(ServiceConstants.ServiceName);
+            sc.Refresh();
+            
             if (sc.Status == ServiceControllerStatus.Running)
                 return true;
 
@@ -120,6 +123,7 @@ public static class ServiceControlHelper
             {
                 sc.Start();
                 await Task.Run(() => sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(timeoutSeconds)));
+                sc.Refresh();
                 return sc.Status == ServiceControllerStatus.Running;
             }
             catch
@@ -143,6 +147,8 @@ public static class ServiceControlHelper
         try
         {
             using var sc = new ServiceController(ServiceConstants.ServiceName);
+            sc.Refresh();
+            
             if (sc.Status == ServiceControllerStatus.Stopped)
                 return true;
 
@@ -151,6 +157,7 @@ public static class ServiceControlHelper
             {
                 sc.Stop();
                 await Task.Run(() => sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(timeoutSeconds)));
+                sc.Refresh();
                 return sc.Status == ServiceControllerStatus.Stopped;
             }
             catch
@@ -202,6 +209,31 @@ public static class ServiceControlHelper
             null => "Not Installed",
             _ => "Unknown"
         };
+    }
+
+    public static bool GetDelayedStart()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                $@"SYSTEM\CurrentControlSet\Services\{ServiceConstants.ServiceName}");
+            if (key == null) return false;
+            
+            var value = key.GetValue("DelayedAutostart");
+            return value is int intValue && intValue == 1;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static bool SetDelayedStart(bool delayed)
+    {
+        // Use sc.exe to change the start type with delayed flag
+        var startType = delayed ? "delayed-auto" : "auto";
+        var result = RunScCommand($"config {ServiceConstants.ServiceName} start= {startType}");
+        return result.success;
     }
 }
 

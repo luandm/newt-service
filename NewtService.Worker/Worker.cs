@@ -50,13 +50,20 @@ public class NewtWorker : BackgroundService
         
         _config = NewtConfig.Load();
         
-        await EnsureNewtInstalledAsync();
-        
         await base.StartAsync(cancellationToken);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Download newt if needed (can take time, so do it in ExecuteAsync not StartAsync)
+        await EnsureNewtInstalledAsync();
+        
+        if (!File.Exists(ServiceConstants.NewtExecutablePath))
+        {
+            _logger.LogError("Newt executable not found, service cannot start");
+            return;
+        }
+
         StartNewt();
 
         while (!stoppingToken.IsCancellationRequested)

@@ -55,12 +55,19 @@
             <Setter Property="Background" Value="#66BB6A"/>
         </Style>
         <Style Selector="Button.secondary">
-            <Setter Property="Background" Value="#252542"/>
-            <Setter Property="Foreground" Value="#b0b0c0"/>
-            <Setter Property="BorderBrush" Value="#3d3d5c"/>
+            <Setter Property="Background" Value="#3d3d5c"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="BorderBrush" Value="#4d4d6c"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="14,8"/>
             <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4d4d6c"/>
+        </Style>
+        <Style Selector="Button.secondary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252542"/>
+            <Setter Property="Foreground" Value="#6a6a7a"/>
         </Style>
         <Style Selector="Button.update">
             <Setter Property="Background" Value="#1976D2"/>
@@ -83,24 +90,29 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#6a6a7a"/>
         </Style>
+        <Style Selector="Button.icon">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#6a6a7a"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
+        <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252542"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
     </Window.Styles>
 
     <Grid RowDefinitions="*,Auto,Auto" Margin="20,32,20,12">
         <StackPanel Grid.Row="0" Spacing="0">
             
             <!-- Header -->
-            <StackPanel Spacing="2" Margin="0,0,0,6">
+            <Grid Margin="0,0,0,6">
                 <TextBlock Classes="header" Text="Newt VPN"/>
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <TextBlock Classes="subheader" Text="Status: "/>
-                    <TextBlock Classes="subheader" Text="{Binding Status}" 
-                               Foreground="{Binding IsRunning, Converter={StaticResource StatusColorConverter}}"/>
-                    <TextBlock Classes="subheader" Text=" • Newt "/>
-                    <TextBlock Classes="subheader" Text="{Binding Version}"/>
-                    <TextBlock Classes="subheader" Text=" • App v"/>
-                    <TextBlock Classes="subheader" Text="{Binding AppVersion}"/>
-                </StackPanel>
-            </StackPanel>
+                <Button Classes="icon" Content="⚙" ToolTip.Tip="Settings" 
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Command="{Binding OpenSettingsCommand}"/>
+            </Grid>
 
             <!-- Form -->
             <TextBlock Classes="label" Text="ENDPOINT" Margin="0,0,0,4"/>
@@ -111,17 +123,38 @@
             
             <TextBlock Classes="label" Text="SECRET"/>
             <TextBox Text="{Binding Secret}" PasswordChar="•" Watermark="Your client secret"/>
+            
+            <!-- Status -->
+            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,12,0,0" HorizontalAlignment="Center">
+                <TextBlock Classes="subheader" Text="{Binding Status}" 
+                           Foreground="{Binding IsRunning, Converter={StaticResource StatusColorConverter}}"/>
+                <TextBlock Classes="subheader" Text=" • Newt "/>
+                <TextBlock Classes="subheader" Text="{Binding Version}"/>
+                <TextBlock Classes="subheader" Text=" • App v"/>
+                <TextBlock Classes="subheader" Text="{Binding AppVersion}"/>
+            </StackPanel>
         </StackPanel>
 
         <!-- All Buttons Row -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,14,0,0" HorizontalAlignment="Center">
             <Button Classes="secondary" Content="Check Service" Command="{Binding CheckServiceCommand}"/>
-            <Button Classes="update" Content="{Binding UpdateButtonText}" Command="{Binding CheckUpdateCommand}" ToolTip.Tip="Update Newt client"/>
-            <Button Classes="update" Content="{Binding AppUpdateButtonText}" Command="{Binding CheckAppUpdateCommand}" ToolTip.Tip="Update this app"/>
-            <Button Classes="primary" Content="Start" Command="{Binding StartCommand}" 
-                    IsVisible="{Binding !IsRunning}" IsEnabled="{Binding IsInstalled}"/>
-            <Button Classes="secondary" Content="Stop" Command="{Binding StopCommand}" 
-                    IsVisible="{Binding IsRunning}"/>
+            <Button Classes="update" Content="Check for Updates">
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuItem Header="{Binding UpdateButtonText}" Command="{Binding CheckUpdateCommand}"/>
+                        <MenuItem Header="{Binding AppUpdateButtonText}" Command="{Binding CheckAppUpdateCommand}"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+            <Button Classes="secondary" Content="Service Control" IsEnabled="{Binding IsInstalled}">
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuItem Header="Start" Command="{Binding StartCommand}"/>
+                        <MenuItem Header="Stop" Command="{Binding StopCommand}"/>
+                        <MenuItem Header="Restart" Command="{Binding RestartCommand}"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
             <Button Classes="primary" Content="Save" Command="{Binding SaveConfigCommand}"/>
         </StackPanel>
 
