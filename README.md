@@ -4,6 +4,8 @@
 
 Windows service wrapper for the [Newt VPN client](https://github.com/fosrl/newt).
 
+<img src="assets/screenshots/main-screen.png" align="center">
+
 <br clear="left">
 
 ## Download
