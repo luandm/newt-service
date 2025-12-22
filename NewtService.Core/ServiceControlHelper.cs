@@ -23,12 +23,12 @@ public static class ServiceControlHelper
             return (false, createResult.message);
 
         RunScCommand($"description {ServiceConstants.ServiceName} \"{ServiceConstants.ServiceDescription}\"");
-        
+
         // Wait for SCM to register the service
         Thread.Sleep(1000);
-        
-        return IsServiceInstalled() 
-            ? (true, "Service installed successfully") 
+
+        return IsServiceInstalled()
+            ? (true, "Service installed successfully")
             : (false, "Service installation failed");
     }
 
@@ -63,15 +63,15 @@ public static class ServiceControlHelper
                 Verb = IsRunningAsAdmin() ? "" : "runas",
                 CreateNoWindow = true
             };
-            
+
             var process = Process.Start(psi);
             if (process == null)
                 return (false, "Failed to start sc.exe");
-            
+
             process.WaitForExit(15000);
-            
-            return process.ExitCode == 0 
-                ? (true, "Success") 
+
+            return process.ExitCode == 0
+                ? (true, "Success")
                 : (false, $"Operation failed (error {process.ExitCode})");
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
@@ -114,7 +114,7 @@ public static class ServiceControlHelper
         {
             using var sc = new ServiceController(ServiceConstants.ServiceName);
             sc.Refresh();
-            
+
             if (sc.Status == ServiceControllerStatus.Running)
                 return true;
 
@@ -131,7 +131,7 @@ public static class ServiceControlHelper
                 // Fall back to sc.exe with UAC
                 var result = RunScCommand($"start {ServiceConstants.ServiceName}");
                 if (!result.success) return false;
-                
+
                 await WaitForStatusAsync(ServiceControllerStatus.Running, timeoutSeconds);
                 return IsServiceRunning();
             }
@@ -148,7 +148,7 @@ public static class ServiceControlHelper
         {
             using var sc = new ServiceController(ServiceConstants.ServiceName);
             sc.Refresh();
-            
+
             if (sc.Status == ServiceControllerStatus.Stopped)
                 return true;
 
@@ -165,7 +165,7 @@ public static class ServiceControlHelper
                 // Fall back to sc.exe with UAC
                 var result = RunScCommand($"stop {ServiceConstants.ServiceName}");
                 if (!result.success) return false;
-                
+
                 await WaitForStatusAsync(ServiceControllerStatus.Stopped, timeoutSeconds);
                 return GetServiceStatus() == ServiceControllerStatus.Stopped;
             }
@@ -218,7 +218,7 @@ public static class ServiceControlHelper
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
                 $@"SYSTEM\CurrentControlSet\Services\{ServiceConstants.ServiceName}");
             if (key == null) return false;
-            
+
             var value = key.GetValue("DelayedAutostart");
             return value is int intValue && intValue == 1;
         }

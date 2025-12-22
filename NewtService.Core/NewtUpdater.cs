@@ -6,7 +6,7 @@ namespace NewtService.Core;
 public class NewtUpdater : IDisposable
 {
     private readonly HttpClient _httpClient;
-    
+
     public event Action<string>? OnLog;
 
     public NewtUpdater()
@@ -25,22 +25,22 @@ public class NewtUpdater : IDisposable
                 Log($"GitHub API error: {response.StatusCode}");
                 return null;
             }
-            
+
             var releases = await response.Content.ReadFromJsonAsync<List<GitHubRelease>>();
-            
+
             if (releases == null || releases.Count == 0)
             {
                 Log("No releases found");
                 return null;
             }
 
-            var release = includePrerelease 
-                ? releases.FirstOrDefault() 
+            var release = includePrerelease
+                ? releases.FirstOrDefault()
                 : releases.FirstOrDefault(r => !r.Prerelease);
-                
+
             if (release != null)
                 Log($"Found release: {release.TagName}");
-                
+
             return release;
         }
         catch (Exception ex)
@@ -54,7 +54,7 @@ public class NewtUpdater : IDisposable
     {
         if (!File.Exists(ServiceConstants.VersionFilePath))
             return null;
-        
+
         return File.ReadAllText(ServiceConstants.VersionFilePath).Trim();
     }
 
@@ -62,7 +62,7 @@ public class NewtUpdater : IDisposable
     {
         var latest = await GetLatestReleaseAsync(includePrerelease);
         if (latest == null) return false;
-        
+
         var current = GetCurrentVersion();
         return current != latest.TagName;
     }
@@ -79,19 +79,19 @@ public class NewtUpdater : IDisposable
         try
         {
             Directory.CreateDirectory(ServiceConstants.AppDataPath);
-            
+
             var tempPath = Path.Combine(Path.GetTempPath(), asset.Name);
-            
+
             Log($"Downloading {asset.Name}...");
             await DownloadFileAsync(asset.DownloadUrl, tempPath, progress);
-            
+
             Log("Installing...");
             File.Copy(tempPath, ServiceConstants.NewtExecutablePath, overwrite: true);
-            
+
             File.WriteAllText(ServiceConstants.VersionFilePath, release.TagName);
-            
+
             try { File.Delete(tempPath); } catch { }
-            
+
             Log($"Updated to version {release.TagName}");
             return true;
         }
@@ -110,9 +110,9 @@ public class NewtUpdater : IDisposable
             Architecture.Arm64 => "arm64",
             _ => "amd64"
         };
-        
+
         var expectedName = $"newt_windows_{arch}.exe";
-        
+
         if (release.Assets?.Count > 0)
         {
             Log($"Available assets: {string.Join(", ", release.Assets.Select(a => a.Name))}");
@@ -122,47 +122,47 @@ public class NewtUpdater : IDisposable
             Log("No assets in release");
             return null;
         }
-        
-        var asset = release.Assets.FirstOrDefault(a => 
+
+        var asset = release.Assets.FirstOrDefault(a =>
             a.Name.Equals(expectedName, StringComparison.OrdinalIgnoreCase));
-            
+
         if (asset == null)
             Log($"No asset matching '{expectedName}'");
         else
             Log($"Selected asset: {asset.Name}");
-            
+
         return asset;
     }
 
     private async Task DownloadFileAsync(string url, string destination, IProgress<double>? progress)
     {
         Log($"Downloading from: {url}");
-        
+
         using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         if (!response.IsSuccessStatusCode)
         {
             throw new HttpRequestException($"Download failed: {response.StatusCode}");
         }
-        
+
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
         Log($"Download size: {totalBytes / 1024 / 1024:F1} MB");
-        
+
         await using var contentStream = await response.Content.ReadAsStreamAsync();
         await using var fileStream = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-        
+
         var buffer = new byte[8192];
         long totalRead = 0;
         int bytesRead;
-        
+
         while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
         {
             await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
             totalRead += bytesRead;
-            
+
             if (totalBytes > 0)
                 progress?.Report((double)totalRead / totalBytes * 100);
         }
-        
+
         Log("Download complete");
     }
 

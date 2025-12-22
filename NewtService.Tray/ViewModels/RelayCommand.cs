@@ -46,10 +46,10 @@ public class AsyncRelayCommand : ICommand
     public async void Execute(object? parameter)
     {
         if (_isExecuting) return;
-        
+
         _isExecuting = true;
         RaiseCanExecuteChanged();
-        
+
         try
         {
             await _execute();

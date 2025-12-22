@@ -9,9 +9,9 @@ public class AppUpdater : IDisposable
     private readonly HttpClient _httpClient;
     private const string ReleasesApi = "https://api.github.com/repos/memesalot/newt-service/releases/latest";
     private const string ReleasesUrl = "https://github.com/memesalot/newt-service/releases";
-    
+
     public static string StagingPath => Path.Combine(Path.GetTempPath(), "NewtServiceUpdate");
-    
+
     public event Action<string>? OnLog;
     public event Action? OnRequestExit;
 
@@ -36,11 +36,11 @@ public class AppUpdater : IDisposable
             var release = await _httpClient.GetFromJsonAsync<GitHubRelease>(ReleasesApi);
             if (release == null) return null;
 
-            var msiAsset = release.Assets.FirstOrDefault(a => 
+            var msiAsset = release.Assets.FirstOrDefault(a =>
                 a.Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase));
-            var trayAsset = release.Assets.FirstOrDefault(a => 
+            var trayAsset = release.Assets.FirstOrDefault(a =>
                 a.Name.Equals("NewtService.Tray.exe", StringComparison.OrdinalIgnoreCase));
-            var workerAsset = release.Assets.FirstOrDefault(a => 
+            var workerAsset = release.Assets.FirstOrDefault(a =>
                 a.Name.Equals("NewtService.Worker.exe", StringComparison.OrdinalIgnoreCase));
 
             return new AppRelease
@@ -74,14 +74,14 @@ public class AppUpdater : IDisposable
     public async Task<bool> DownloadAndInstallAsync(AppRelease release, IProgress<double>? progress = null)
     {
         var appDir = AppContext.BaseDirectory;
-        var isMsiInstall = File.Exists(Path.Combine(appDir, "unins000.exe")) || 
+        var isMsiInstall = File.Exists(Path.Combine(appDir, "unins000.exe")) ||
                           appDir.Contains("Program Files", StringComparison.OrdinalIgnoreCase);
 
         if (isMsiInstall && !string.IsNullOrEmpty(release.MsiDownloadUrl))
         {
             return await InstallViaMsiAsync(release, progress);
         }
-        
+
         return await InstallViaStagingAsync(release, progress);
     }
 
@@ -90,10 +90,10 @@ public class AppUpdater : IDisposable
         try
         {
             var tempPath = Path.Combine(Path.GetTempPath(), "NewtServiceSetup.msi");
-            
+
             Log("Downloading update...");
             await DownloadFileAsync(release.MsiDownloadUrl!, tempPath, progress);
-            
+
             Log("Starting installer...");
             Process.Start(new ProcessStartInfo
             {
@@ -132,7 +132,7 @@ public class AppUpdater : IDisposable
 
             Log("Downloading Tray...");
             await DownloadFileAsync(release.TrayDownloadUrl, trayPath, progress);
-            
+
             Log("Downloading Worker...");
             await DownloadFileAsync(release.WorkerDownloadUrl, workerPath, progress);
 
@@ -171,21 +171,21 @@ public class AppUpdater : IDisposable
     {
         using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
-        
+
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        
+
         await using var contentStream = await response.Content.ReadAsStreamAsync();
         await using var fileStream = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-        
+
         var buffer = new byte[8192];
         long totalRead = 0;
         int bytesRead;
-        
+
         while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
         {
             await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
             totalRead += bytesRead;
-            
+
             if (totalBytes > 0)
                 progress?.Report((double)totalRead / totalBytes * 100);
         }
@@ -195,7 +195,7 @@ public class AppUpdater : IDisposable
     {
         var parts1 = v1.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
         var parts2 = v2.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
-        
+
         for (int i = 0; i < Math.Max(parts1.Length, parts2.Length); i++)
         {
             var p1 = i < parts1.Length ? parts1[i] : 0;

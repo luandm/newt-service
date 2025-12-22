@@ -93,7 +93,7 @@ class Program
             var appDir = AppContext.BaseDirectory;
             var trayOld = Path.Combine(appDir, "NewtService.Tray.exe.old");
             var workerOld = Path.Combine(appDir, "NewtService.Worker.exe.old");
-            
+
             if (File.Exists(trayOld)) File.Delete(trayOld);
             if (File.Exists(workerOld)) File.Delete(workerOld);
         }

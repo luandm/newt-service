@@ -38,27 +38,27 @@ public class FileLogger : IDisposable
                 try
                 {
                     EnsureDirectoryExists();
-                    
+
                     var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                     var line = $"[{timestamp}] [{level}] {message}{Environment.NewLine}";
-                    
+
                     // Append to file with shared access
                     using var stream = new FileStream(
                         _logFilePath,
                         FileMode.Append,
                         FileAccess.Write,
                         FileShare.ReadWrite);
-                    
+
                     var bytes = Encoding.UTF8.GetBytes(line);
                     stream.Write(bytes, 0, bytes.Length);
-                    
+
                     // Check size and truncate if needed (only occasionally)
                     if (stream.Length > MaxLogSize)
                     {
                         stream.Close();
                         TruncateLog();
                     }
-                    
+
                     return;
                 }
                 catch (IOException) when (retry < MaxRetries - 1)
@@ -90,7 +90,7 @@ public class FileLogger : IDisposable
     public void OpenFile()
     {
         EnsureDirectoryExists();
-        
+
         try
         {
             if (!File.Exists(_logFilePath))

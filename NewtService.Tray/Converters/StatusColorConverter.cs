@@ -11,8 +11,8 @@ public class StatusColorConverter : IValueConverter
     {
         if (value is bool isRunning)
         {
-            return isRunning 
-                ? new SolidColorBrush(Color.Parse("#4CAF50")) 
+            return isRunning
+                ? new SolidColorBrush(Color.Parse("#4CAF50"))
                 : new SolidColorBrush(Color.Parse("#F44336"));
         }
         return new SolidColorBrush(Color.Parse("#8b8b9a"));

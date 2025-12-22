@@ -61,17 +61,17 @@ public class NewtProcessManager : IDisposable
                 };
 
                 _process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
-                
+
                 _process.OutputDataReceived += (_, e) =>
                 {
                     if (e.Data != null) OnOutput?.Invoke(e.Data);
                 };
-                
+
                 _process.ErrorDataReceived += (_, e) =>
                 {
                     if (e.Data != null) OnError?.Invoke(e.Data);
                 };
-                
+
                 _process.Exited += (_, _) =>
                 {
                     lock (_lock)
@@ -113,7 +113,7 @@ public class NewtProcessManager : IDisposable
                 {
                     _process.Kill();
                 }
-                
+
                 if (!_process.WaitForExit(timeoutMs))
                 {
                     _process.Kill(true);
