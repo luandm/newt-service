@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -30,9 +30,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\**" />
-    <EmbeddedResource Include="Assets\icon.png" />
-    <EmbeddedResource Include="Assets\icon-256.png" />
+    <AvaloniaResource Include="Assets\logo.png" />
+    <EmbeddedResource Include="Assets\icon.png" LogicalName="NewtService.Tray.Assets.icon.png" />
+    <EmbeddedResource Include="Assets\icon-256.png" LogicalName="NewtService.Tray.Assets.icon-256.png" />
   </ItemGroup>
 
 </Project>

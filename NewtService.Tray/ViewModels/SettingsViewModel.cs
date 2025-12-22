@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using Microsoft.Win32;
 using NewtService.Core;
 
@@ -7,7 +8,7 @@ public class SettingsViewModel : ViewModelBase
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AppName = "NewtService";
-    
+
     private bool _delayedStart;
     private bool _isInstalled;
     private bool _startOnBoot;
@@ -19,7 +20,7 @@ public class SettingsViewModel : ViewModelBase
         {
             if (SetProperty(ref _delayedStart, value))
             {
-                ServiceControlHelper.SetDelayedStart(value);
+                Task.Run(() => ServiceControlHelper.SetDelayedStart(value));
             }
         }
     }
@@ -37,22 +38,37 @@ public class SettingsViewModel : ViewModelBase
         {
             if (SetProperty(ref _startOnBoot, value))
             {
-                SetStartOnBoot(value);
+                Task.Run(() => SetStartOnBoot(value));
             }
         }
     }
 
     public SettingsViewModel()
     {
-        IsInstalled = ServiceControlHelper.IsServiceInstalled();
-        if (IsInstalled)
-        {
-            _delayedStart = ServiceControlHelper.GetDelayedStart();
-        }
-        _startOnBoot = GetStartOnBoot();
+        _ = InitializeAsync();
     }
 
-    private bool GetStartOnBoot()
+    private async Task InitializeAsync()
+    {
+        var (isInstalled, delayedStart, startOnBoot) = await Task.Run(() =>
+        {
+            var installed = ServiceControlHelper.IsServiceInstalled();
+            var delayed = installed && ServiceControlHelper.GetDelayedStart();
+            var boot = GetStartOnBoot();
+            return (installed, delayed, boot);
+        }).ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            IsInstalled = isInstalled;
+            _delayedStart = delayedStart;
+            OnPropertyChanged(nameof(DelayedStart));
+            _startOnBoot = startOnBoot;
+            OnPropertyChanged(nameof(StartOnBoot));
+        });
+    }
+
+    private static bool GetStartOnBoot()
     {
         try
         {
@@ -65,7 +81,7 @@ public class SettingsViewModel : ViewModelBase
         }
     }
 
-    private void SetStartOnBoot(bool enable)
+    private static void SetStartOnBoot(bool enable)
     {
         try
         {
