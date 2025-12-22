@@ -94,7 +94,7 @@ jobs:
     - name: Build MSI Installer
       run: |
         cd installer
-        wix build Package.wxs -d ProductVersion=${{ steps.version.outputs.VERSION }}.0 -o ..\NewtServiceSetup.msi
+        wix build Package.wxs -ext WixToolset.UI.wixext -d ProductVersion=${{ steps.version.outputs.VERSION }}.0 -o ..\NewtServiceSetup.msi
 
     - name: Commit version bump
       run: |

@@ -1,4 +1,4 @@
-<img src="NewtService.Tray/Assets/logo.png" width="64" height="64" align="left" style="margin-right: 15px;">
+<img src="assets/icon/favicon-96x96.png" width="64" height="64" align="left" style="margin-right: 15px;">
 
 # Newt Service
 

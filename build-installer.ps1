@@ -26,7 +26,7 @@ Write-Host "Creating MSI installer..." -ForegroundColor Cyan
 
 # Build MSI with WiX
 Push-Location installer
-wix build Package.wxs -o ..\NewtServiceSetup.msi
+wix build Package.wxs -ext WixToolset.UI.wixext -o ..\NewtServiceSetup.msi
 Pop-Location
 
 if (Test-Path "NewtServiceSetup.msi") {
