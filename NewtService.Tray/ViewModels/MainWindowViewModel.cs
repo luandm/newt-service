@@ -19,6 +19,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private string _updateButtonText = "Check for Update";
     private bool _updateAvailable;
     private GitHubRelease? _availableUpdate;
+    private string _appUpdateButtonText = "Check App Update";
+    private AppRelease? _availableAppUpdate;
 
     public string Status
     {
@@ -82,13 +84,23 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         set => SetProperty(ref _updateAvailable, value);
     }
 
+    public string AppUpdateButtonText
+    {
+        get => _appUpdateButtonText;
+        set => SetProperty(ref _appUpdateButtonText, value);
+    }
+
+    public string AppVersion => AppUpdater.GetCurrentVersion() ?? "Unknown";
+
     public ICommand StartCommand { get; }
     public ICommand StopCommand { get; }
     public ICommand RestartCommand { get; }
     public ICommand SaveConfigCommand { get; }
     public ICommand CheckServiceCommand { get; }
     public ICommand CheckUpdateCommand { get; }
+    public ICommand CheckAppUpdateCommand { get; }
     public ICommand OpenGitHubCommand { get; }
+    public ICommand OpenLogsCommand { get; }
 
     public MainWindowViewModel()
     {
@@ -97,8 +109,10 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         RestartCommand = new AsyncRelayCommand(RestartServiceAsync, () => IsInstalled && IsRunning);
         SaveConfigCommand = new AsyncRelayCommand(SaveConfigAsync);
         CheckServiceCommand = new RelayCommand(CheckService);
-        CheckUpdateCommand = new AsyncRelayCommand(CheckOrInstallUpdateAsync);
+        CheckUpdateCommand = new AsyncRelayCommand(CheckOrInstallNewtUpdateAsync);
+        CheckAppUpdateCommand = new AsyncRelayCommand(CheckOrInstallAppUpdateAsync);
         OpenGitHubCommand = new RelayCommand(OpenGitHub);
+        OpenLogsCommand = new RelayCommand(OpenLogs);
 
         LoadConfig();
         UpdateStatus();
@@ -245,11 +259,10 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         Status = IsRunning ? "Running - OK" : "Stopped - OK";
     }
 
-    private async Task CheckOrInstallUpdateAsync()
+    private async Task CheckOrInstallNewtUpdateAsync()
     {
         if (UpdateAvailable && _availableUpdate != null)
         {
-            // Install the update
             UpdateButtonText = "Updating...";
             
             var wasRunning = IsRunning;
@@ -270,7 +283,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            // Check for updates
             UpdateButtonText = "Checking...";
             
             using var updater = new NewtUpdater();
@@ -291,7 +303,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             {
                 _availableUpdate = latest;
                 UpdateAvailable = true;
-                UpdateButtonText = $"Install Update ({latest.TagName})";
+                UpdateButtonText = $"Install Newt ({latest.TagName})";
             }
             else
             {
@@ -302,6 +314,67 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private async Task CheckOrInstallAppUpdateAsync()
+    {
+        if (_availableAppUpdate != null)
+        {
+            AppUpdateButtonText = "Downloading...";
+            
+            using var updater = new AppUpdater();
+            var success = await updater.DownloadAndInstallAsync(_availableAppUpdate);
+            
+            if (!success)
+            {
+                AppUpdateButtonText = "Update failed";
+                await Task.Delay(2000);
+                updater.OpenReleasesPage();
+            }
+            // App will restart via MSI installer
+        }
+        else
+        {
+            AppUpdateButtonText = "Checking...";
+            
+            using var updater = new AppUpdater();
+            var current = AppUpdater.GetCurrentVersion();
+            var latest = await updater.GetLatestReleaseAsync();
+
+            if (latest == null || current == null)
+            {
+                AppUpdateButtonText = "Check failed";
+                await Task.Delay(2000);
+                AppUpdateButtonText = "Check App Update";
+                return;
+            }
+
+            if (CompareVersions(latest.Version, current) > 0)
+            {
+                _availableAppUpdate = latest;
+                AppUpdateButtonText = $"Install App ({latest.TagName})";
+            }
+            else
+            {
+                AppUpdateButtonText = "Up to date";
+                await Task.Delay(2000);
+                AppUpdateButtonText = "Check App Update";
+            }
+        }
+    }
+
+    private static int CompareVersions(string v1, string v2)
+    {
+        var parts1 = v1.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
+        var parts2 = v2.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
+        
+        for (int i = 0; i < Math.Max(parts1.Length, parts2.Length); i++)
+        {
+            var p1 = i < parts1.Length ? parts1[i] : 0;
+            var p2 = i < parts2.Length ? parts2[i] : 0;
+            if (p1 != p2) return p1.CompareTo(p2);
+        }
+        return 0;
+    }
+
     private void OpenGitHub()
     {
         Process.Start(new ProcessStartInfo
@@ -309,6 +382,11 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             FileName = "https://github.com/memesalot/newt-service",
             UseShellExecute = true
         });
+    }
+
+    private void OpenLogs()
+    {
+        NewtLogger.OpenLogFile();
     }
 
     private bool RunScCommand(string args)

@@ -5,8 +5,8 @@
         x:Class="NewtService.Tray.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Newt VPN"
-        Width="480"
-        Height="370"
+        Width="580"
+        Height="390"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
@@ -95,8 +95,10 @@
                     <TextBlock Classes="subheader" Text="Status: "/>
                     <TextBlock Classes="subheader" Text="{Binding Status}" 
                                Foreground="{Binding IsRunning, Converter={StaticResource StatusColorConverter}}"/>
-                    <TextBlock Classes="subheader" Text=" • "/>
+                    <TextBlock Classes="subheader" Text=" • Newt "/>
                     <TextBlock Classes="subheader" Text="{Binding Version}"/>
+                    <TextBlock Classes="subheader" Text=" • App v"/>
+                    <TextBlock Classes="subheader" Text="{Binding AppVersion}"/>
                 </StackPanel>
             </StackPanel>
 
@@ -114,18 +116,19 @@
         <!-- All Buttons Row -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,14,0,0" HorizontalAlignment="Center">
             <Button Classes="secondary" Content="Check Service" Command="{Binding CheckServiceCommand}"/>
-            <Button Classes="update" Content="{Binding UpdateButtonText}" Command="{Binding CheckUpdateCommand}"/>
+            <Button Classes="update" Content="{Binding UpdateButtonText}" Command="{Binding CheckUpdateCommand}" ToolTip.Tip="Update Newt client"/>
+            <Button Classes="update" Content="{Binding AppUpdateButtonText}" Command="{Binding CheckAppUpdateCommand}" ToolTip.Tip="Update this app"/>
             <Button Classes="primary" Content="Start" Command="{Binding StartCommand}" 
                     IsVisible="{Binding !IsRunning}" IsEnabled="{Binding IsInstalled}"/>
             <Button Classes="secondary" Content="Stop" Command="{Binding StopCommand}" 
-                    IsVisible="{Binding IsRunning}"/>
-            <Button Classes="secondary" Content="Restart" Command="{Binding RestartCommand}" 
                     IsVisible="{Binding IsRunning}"/>
             <Button Classes="primary" Content="Save" Command="{Binding SaveConfigCommand}"/>
         </StackPanel>
 
         <!-- Footer -->
-        <Button Grid.Row="2" Classes="link" Content="NewtService" Margin="0,10,0,0"
-                Command="{Binding OpenGitHubCommand}" HorizontalAlignment="Center"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20" Margin="0,10,0,0">
+            <Button Classes="link" Content="Open Logs" Command="{Binding OpenLogsCommand}"/>
+            <Button Classes="link" Content="NewtService" Command="{Binding OpenGitHubCommand}"/>
+        </StackPanel>
     </Grid>
 </Window>

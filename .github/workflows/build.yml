@@ -26,50 +26,26 @@ jobs:
     - name: Install WiX Toolset
       run: dotnet tool install --global wix
 
-    - name: Get current version
+    - name: Get and bump version
       id: version
+      shell: pwsh
       run: |
-        $version = Get-Content VERSION -Raw
-        $version = $version.Trim()
+        $version = (Get-Content VERSION -Raw).Trim()
         $parts = $version.Split('.')
         $major = [int]$parts[0]
         $minor = [int]$parts[1]
-        $patch = [int]$parts[2]
-        $patch++
+        $patch = [int]$parts[2] + 1
         $newVersion = "$major.$minor.$patch"
         echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
-        echo "New version: $newVersion"
-
-    - name: Update version file
-      run: |
-        "${{ steps.version.outputs.VERSION }}" | Out-File -FilePath VERSION -NoNewline
-
-    - name: Update project versions
-      run: |
-        $version = "${{ steps.version.outputs.VERSION }}"
         
-        # Update Worker csproj
-        $workerProj = Get-Content "NewtService.Worker/NewtService.Worker.csproj" -Raw
-        if ($workerProj -notmatch '<Version>') {
-          $workerProj = $workerProj -replace '(<PropertyGroup>)', "`$1`n    <Version>$version</Version>"
-        } else {
-          $workerProj = $workerProj -replace '<Version>.*?</Version>', "<Version>$version</Version>"
-        }
-        $workerProj | Out-File "NewtService.Worker/NewtService.Worker.csproj" -NoNewline
-        
-        # Update Tray csproj
-        $trayProj = Get-Content "NewtService.Tray/NewtService.Tray.csproj" -Raw
-        if ($trayProj -notmatch '<Version>') {
-          $trayProj = $trayProj -replace '(<PropertyGroup>)', "`$1`n    <Version>$version</Version>"
-        } else {
-          $trayProj = $trayProj -replace '<Version>.*?</Version>', "<Version>$version</Version>"
-        }
-        $trayProj | Out-File "NewtService.Tray/NewtService.Tray.csproj" -NoNewline
+        # Update VERSION file with UTF8 no BOM
+        [System.IO.File]::WriteAllText("VERSION", $newVersion, [System.Text.UTF8Encoding]::new($false))
         
         # Update WiX installer version
-        $wxs = Get-Content "installer/Package.wxs" -Raw
-        $wxs = $wxs -replace 'Version="[\d\.]+"', "Version=`"$version.0`""
-        $wxs | Out-File "installer/Package.wxs" -NoNewline
+        $wxsPath = "installer/Package.wxs"
+        $wxs = [System.IO.File]::ReadAllText($wxsPath)
+        $wxs = $wxs -replace 'Version="[\d\.]+"', "Version=`"$newVersion.0`""
+        [System.IO.File]::WriteAllText($wxsPath, $wxs, [System.Text.UTF8Encoding]::new($false))
 
     - name: Restore dependencies
       run: dotnet restore
@@ -80,6 +56,7 @@ jobs:
           -p:PublishSingleFile=true `
           -p:SelfContained=true `
           -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:Version=${{ steps.version.outputs.VERSION }} `
           -r win-x64
 
     - name: Publish Tray
@@ -88,6 +65,7 @@ jobs:
           -p:PublishSingleFile=true `
           -p:SelfContained=true `
           -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:Version=${{ steps.version.outputs.VERSION }} `
           -r win-x64
 
     - name: Clean publish folder
@@ -104,7 +82,7 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add VERSION
+        git add VERSION installer/Package.wxs
         git commit -m "Bump version to ${{ steps.version.outputs.VERSION }}" || echo "No changes to commit"
         git push || echo "Nothing to push"
 
@@ -144,4 +122,3 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

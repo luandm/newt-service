@@ -7,6 +7,7 @@ public class NewtWorker : BackgroundService
     private readonly ILogger<NewtWorker> _logger;
     private readonly NewtProcessManager _processManager;
     private readonly NewtUpdater _updater;
+    private readonly NewtLogger _newtLogger;
     private NewtConfig _config;
 
     public NewtWorker(ILogger<NewtWorker> logger)
@@ -14,13 +15,30 @@ public class NewtWorker : BackgroundService
         _logger = logger;
         _processManager = new NewtProcessManager();
         _updater = new NewtUpdater();
+        _newtLogger = new NewtLogger();
         _config = new NewtConfig();
 
-        _processManager.OnOutput += msg => _logger.LogInformation("[newt] {Message}", msg);
-        _processManager.OnError += msg => _logger.LogWarning("[newt] {Message}", msg);
-        _processManager.OnExit += code => _logger.LogWarning("Newt process exited with code {ExitCode}", code);
+        _processManager.OnOutput += msg =>
+        {
+            _logger.LogInformation("[newt] {Message}", msg);
+            _newtLogger.LogOutput(msg);
+        };
+        _processManager.OnError += msg =>
+        {
+            _logger.LogWarning("[newt] {Message}", msg);
+            _newtLogger.LogError(msg);
+        };
+        _processManager.OnExit += code =>
+        {
+            _logger.LogWarning("Newt process exited with code {ExitCode}", code);
+            _newtLogger.LogInfo($"Process exited with code {code}");
+        };
 
-        _updater.OnLog += msg => _logger.LogInformation("[updater] {Message}", msg);
+        _updater.OnLog += msg =>
+        {
+            _logger.LogInformation("[updater] {Message}", msg);
+            _newtLogger.LogInfo(msg);
+        };
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
@@ -95,6 +113,7 @@ public class NewtWorker : BackgroundService
     {
         _processManager.Dispose();
         _updater.Dispose();
+        _newtLogger.Dispose();
         base.Dispose();
     }
 }

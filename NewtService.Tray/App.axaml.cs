@@ -16,10 +16,12 @@ public partial class App : Application
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _installItem;
     private NativeMenuItem? _uninstallItem;
-    private NativeMenuItem? _updateNowItem;
-    private GitHubRelease? _availableUpdate;
+    private NativeMenuItem? _newtUpdateItem;
+    private NativeMenuItem? _appUpdateItem;
+    private GitHubRelease? _availableNewtUpdate;
+    private AppRelease? _availableAppUpdate;
     private DispatcherTimer? _statusTimer;
-    private DispatcherTimer? _updateCheckTimer;
+    private DispatcherTimer? _midnightCheckTimer;
     private bool _isDownloading;
 
     public override void Initialize()
@@ -37,14 +39,12 @@ public partial class App : Application
             _statusTimer.Tick += (_, _) => UpdateMenuState();
             _statusTimer.Start();
             
-            SetupDailyUpdateCheck();
+            SetupMidnightCheck();
             
-            // Check if newt.exe needs to be downloaded on startup
             EnsureNewtInstalledAsync();
             
             UpdateMenuState();
 
-            // Show config window if launched with --show-config
             if (Program.ShowConfigOnStartup)
             {
                 Dispatcher.UIThread.Post(ShowMainWindow, DispatcherPriority.Background);
@@ -54,7 +54,7 @@ public partial class App : Application
             desktop.Exit += (_, _) =>
             {
                 _statusTimer?.Stop();
-                _updateCheckTimer?.Stop();
+                _midnightCheckTimer?.Stop();
                 _trayIcon?.Dispose();
             };
         }
@@ -111,24 +111,29 @@ public partial class App : Application
         }
     }
 
-    private void SetupDailyUpdateCheck()
+    private void SetupMidnightCheck()
     {
-        _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
-        _updateCheckTimer.Tick += async (_, _) =>
+        _midnightCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _midnightCheckTimer.Tick += async (_, _) =>
         {
             var now = DateTime.Now;
             if (now.Hour == 0 && now.Minute == 0)
             {
-                await CheckForUpdatesAsync(showNotification: true);
+                await CheckForNewtUpdateAsync(showNotification: true);
+                await CheckForAppUpdateAsync(showNotification: true);
             }
         };
-        _updateCheckTimer.Start();
+        _midnightCheckTimer.Start();
         
-        // Also check on startup (after a short delay)
+        // Check on startup after delay
         Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(30));
-            await Dispatcher.UIThread.InvokeAsync(() => CheckForUpdatesAsync(showNotification: true));
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                await CheckForNewtUpdateAsync(showNotification: true);
+                await CheckForAppUpdateAsync(showNotification: true);
+            });
         });
     }
 
@@ -146,14 +151,25 @@ public partial class App : Application
         
         menu.Items.Add(new NativeMenuItemSeparator());
         
-        var checkUpdateItem = new NativeMenuItem("Check for Updates");
-        checkUpdateItem.Click += async (_, _) => await CheckForUpdatesAsync(showNotification: false);
-        menu.Items.Add(checkUpdateItem);
+        var checkNewtUpdateItem = new NativeMenuItem("Check for Newt Update");
+        checkNewtUpdateItem.Click += async (_, _) => await CheckForNewtUpdateAsync(showNotification: false);
+        menu.Items.Add(checkNewtUpdateItem);
         
-        _updateNowItem = new NativeMenuItem("Update Now");
-        _updateNowItem.Click += async (_, _) => await PerformUpdateAsync();
-        _updateNowItem.IsVisible = false;
-        menu.Items.Add(_updateNowItem);
+        _newtUpdateItem = new NativeMenuItem("Update Newt");
+        _newtUpdateItem.Click += async (_, _) => await PerformNewtUpdateAsync();
+        _newtUpdateItem.IsVisible = false;
+        menu.Items.Add(_newtUpdateItem);
+        
+        menu.Items.Add(new NativeMenuItemSeparator());
+        
+        var checkAppUpdateItem = new NativeMenuItem("Check for App Update");
+        checkAppUpdateItem.Click += async (_, _) => await CheckForAppUpdateAsync(showNotification: false);
+        menu.Items.Add(checkAppUpdateItem);
+        
+        _appUpdateItem = new NativeMenuItem("Update NewtService");
+        _appUpdateItem.Click += async (_, _) => await PerformAppUpdateAsync();
+        _appUpdateItem.IsVisible = false;
+        menu.Items.Add(_appUpdateItem);
         
         menu.Items.Add(new NativeMenuItemSeparator());
         
@@ -196,43 +212,90 @@ public partial class App : Application
         }
     }
 
-    private async Task CheckForUpdatesAsync(bool showNotification)
+    private async Task CheckForNewtUpdateAsync(bool showNotification)
     {
         try
         {
             using var updater = new NewtUpdater();
-            var current = GetInstalledVersion();
+            var current = GetInstalledNewtVersion();
             var latest = await updater.GetLatestReleaseAsync();
             
             if (latest == null) return;
             
             if (current != latest.TagName)
             {
-                _availableUpdate = latest;
-                if (_updateNowItem != null)
+                _availableNewtUpdate = latest;
+                if (_newtUpdateItem != null)
                 {
-                    _updateNowItem.Header = $"Update Now ({latest.TagName})";
-                    _updateNowItem.IsVisible = true;
+                    _newtUpdateItem.Header = $"Update Newt ({latest.TagName})";
+                    _newtUpdateItem.IsVisible = true;
                 }
                 
                 if (showNotification)
                 {
                     ShowWindowsNotification(
-                        "Newt VPN Update Available",
-                        $"Version {latest.TagName} is available. Right-click the tray icon to update.");
+                        "Newt Update Available",
+                        $"Newt {latest.TagName} is available. Right-click tray icon to update.");
                 }
             }
             else
             {
-                _availableUpdate = null;
-                if (_updateNowItem != null)
-                    _updateNowItem.IsVisible = false;
+                _availableNewtUpdate = null;
+                if (_newtUpdateItem != null)
+                    _newtUpdateItem.IsVisible = false;
             }
         }
-        catch
+        catch { }
+    }
+
+    private async Task CheckForAppUpdateAsync(bool showNotification)
+    {
+        try
         {
-            // Silently fail on update check errors
+            using var updater = new AppUpdater();
+            var current = AppUpdater.GetCurrentVersion();
+            var latest = await updater.GetLatestReleaseAsync();
+            
+            if (latest == null || current == null) return;
+            
+            if (latest.Version != current && CompareVersions(latest.Version, current) > 0)
+            {
+                _availableAppUpdate = latest;
+                if (_appUpdateItem != null)
+                {
+                    _appUpdateItem.Header = $"Update NewtService ({latest.TagName})";
+                    _appUpdateItem.IsVisible = true;
+                }
+                
+                if (showNotification)
+                {
+                    ShowWindowsNotification(
+                        "NewtService Update Available",
+                        $"NewtService {latest.TagName} is available. Right-click tray icon to update.");
+                }
+            }
+            else
+            {
+                _availableAppUpdate = null;
+                if (_appUpdateItem != null)
+                    _appUpdateItem.IsVisible = false;
+            }
         }
+        catch { }
+    }
+
+    private static int CompareVersions(string v1, string v2)
+    {
+        var parts1 = v1.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
+        var parts2 = v2.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
+        
+        for (int i = 0; i < Math.Max(parts1.Length, parts2.Length); i++)
+        {
+            var p1 = i < parts1.Length ? parts1[i] : 0;
+            var p2 = i < parts2.Length ? parts2[i] : 0;
+            if (p1 != p2) return p1.CompareTo(p2);
+        }
+        return 0;
     }
 
     private void ShowWindowsNotification(string title, string message)
@@ -276,9 +339,9 @@ public partial class App : Application
         return text.Replace("'", "''").Replace("\"", "`\"");
     }
 
-    private async Task PerformUpdateAsync()
+    private async Task PerformNewtUpdateAsync()
     {
-        if (_availableUpdate == null) return;
+        if (_availableNewtUpdate == null) return;
         
         var wasRunning = ServiceControlHelper.IsServiceRunning();
         
@@ -286,24 +349,44 @@ public partial class App : Application
             await ServiceControlHelper.StopServiceAsync();
         
         using var updater = new NewtUpdater();
-        await updater.DownloadAndInstallAsync(_availableUpdate);
+        await updater.DownloadAndInstallAsync(_availableNewtUpdate);
         
-        var version = _availableUpdate.TagName;
-        _availableUpdate = null;
-        if (_updateNowItem != null)
-            _updateNowItem.IsVisible = false;
+        var version = _availableNewtUpdate.TagName;
+        _availableNewtUpdate = null;
+        if (_newtUpdateItem != null)
+            _newtUpdateItem.IsVisible = false;
         
         if (wasRunning)
             await ServiceControlHelper.StartServiceAsync();
         
-        ShowWindowsNotification("Newt VPN Updated", $"Successfully updated to version {version}");
+        ShowWindowsNotification("Newt Updated", $"Successfully updated to {version}");
         
         UpdateMenuState();
     }
 
+    private async Task PerformAppUpdateAsync()
+    {
+        if (_availableAppUpdate == null) return;
+        
+        ShowWindowsNotification("NewtService", "Downloading update...");
+        
+        using var updater = new AppUpdater();
+        var success = await updater.DownloadAndInstallAsync(_availableAppUpdate);
+        
+        if (success)
+        {
+            // The MSI installer will handle stopping/restarting
+            (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+        }
+        else
+        {
+            ShowWindowsNotification("NewtService", "Update failed. Opening releases page...");
+            updater.OpenReleasesPage();
+        }
+    }
+
     private async Task InstallServiceAsync()
     {
-        // Ensure newt.exe is downloaded before installing service
         if (!File.Exists(ServiceConstants.NewtExecutablePath))
         {
             await DownloadNewtAsync();
@@ -378,7 +461,7 @@ public partial class App : Application
         return null;
     }
 
-    private string? GetInstalledVersion()
+    private string? GetInstalledNewtVersion()
     {
         if (!File.Exists(ServiceConstants.VersionFilePath))
             return null;
