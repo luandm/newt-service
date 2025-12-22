@@ -31,7 +31,23 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Cache WiX Toolset
+      id: cache-wix
+      uses: actions/cache@v4
+      with:
+        path: ~/.dotnet/tools
+        key: ${{ runner.os }}-wix-toolset
+
     - name: Install WiX Toolset
+      if: steps.cache-wix.outputs.cache-hit != 'true'
       run: dotnet tool install --global wix
 
     - name: Get and bump version
