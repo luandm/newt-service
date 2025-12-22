@@ -1,4 +1,4 @@
-<img src="icon.png" width="64" height="64" align="left" style="margin-right: 15px;">
+<img src="logo.png" width="64" height="64" align="left" style="margin-right: 15px;">
 
 # Newt Service
 
