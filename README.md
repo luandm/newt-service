@@ -1,4 +1,4 @@
-<img src="icon.png" width="64" height="64" align="left" style="margin-right: 15px;">
+<img src="NewtService.Tray/Assets/logo.png" width="64" height="64" align="left" style="margin-right: 15px;">
 
 # Newt Service
 
@@ -74,6 +74,14 @@ dotnet publish NewtService.Tray -c Release -o publish -p:PublishSingleFile=true 
 cd installer && wix build Package.wxs -o ..\NewtServiceSetup.msi
 ```
 
+## Third-Party Software
+
+This application downloads and manages the [Newt VPN client](https://github.com/fosrl/newt), which is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. Newt is developed by [fosrl](https://github.com/fosrl).
+
+NewtService does not modify or incorporate Newt's source code - it downloads the official binary and runs it as a separate process. The Newt source code is available at: https://github.com/fosrl/newt
+
 ## License
 
-MIT
+This project (NewtService) is licensed under the MIT License.
+
+Note: The Newt client that this application manages is separately licensed under AGPL-3.0.
