@@ -211,13 +211,18 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
         Status = "Installing service...";
         
-        RunScCommand($"create {ServiceConstants.ServiceName} binPath= \"{exePath}\" start= auto DisplayName= \"{ServiceConstants.ServiceDisplayName}\"");
-        RunScCommand($"description {ServiceConstants.ServiceName} \"{ServiceConstants.ServiceDescription}\"");
+        var result = ServiceControlHelper.InstallService(exePath);
+        if (!result.success)
+        {
+            Status = result.message;
+            return;
+        }
         
         UpdateStatus();
         
         if (IsInstalled)
         {
+            Status = "Starting service...";
             await ServiceControlHelper.StartServiceAsync();
             UpdateStatus();
         }
@@ -387,28 +392,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private void OpenLogs()
     {
         NewtLogger.OpenLogFile();
-    }
-
-    private bool RunScCommand(string args)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "sc.exe",
-                Arguments = args,
-                UseShellExecute = true,
-                Verb = "runas",
-                CreateNoWindow = true
-            };
-            var process = Process.Start(psi);
-            process?.WaitForExit(10000);
-            return process?.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private string? GetWorkerExePath()

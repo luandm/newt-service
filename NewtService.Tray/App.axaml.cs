@@ -405,41 +405,16 @@ public partial class App : Application
             return;
         }
 
-        RunScCommand($"create {ServiceConstants.ServiceName} binPath= \"{exePath}\" start= auto DisplayName= \"{ServiceConstants.ServiceDisplayName}\"");
-        RunScCommand($"description {ServiceConstants.ServiceName} \"{ServiceConstants.ServiceDescription}\"");
-        
-        ShowWindowsNotification("Newt VPN", "Service installed successfully.");
+        var result = ServiceControlHelper.InstallService(exePath);
+        ShowWindowsNotification("Newt VPN", result.message);
         UpdateMenuState();
     }
 
     private void UninstallService()
     {
-        _ = ServiceControlHelper.StopServiceAsync().Result;
-        RunScCommand($"delete {ServiceConstants.ServiceName}");
-        ShowWindowsNotification("Newt VPN", "Service uninstalled.");
+        var result = ServiceControlHelper.UninstallService();
+        ShowWindowsNotification("Newt VPN", result.message);
         UpdateMenuState();
-    }
-
-    private bool RunScCommand(string args)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "sc.exe",
-                Arguments = args,
-                UseShellExecute = true,
-                Verb = "runas",
-                CreateNoWindow = true
-            };
-            var process = Process.Start(psi);
-            process?.WaitForExit(10000);
-            return process?.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private string? GetWorkerExePath()

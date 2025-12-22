@@ -1,9 +1,86 @@
+using System.Diagnostics;
+using System.Security.Principal;
 using System.ServiceProcess;
 
 namespace NewtService.Core;
 
 public static class ServiceControlHelper
 {
+    public static bool IsRunningAsAdmin()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    public static (bool success, string message) InstallService(string workerExePath)
+    {
+        if (!File.Exists(workerExePath))
+            return (false, "Service executable not found");
+
+        var createResult = RunScCommand($"create {ServiceConstants.ServiceName} binPath= \"{workerExePath}\" start= auto DisplayName= \"{ServiceConstants.ServiceDisplayName}\"");
+        if (!createResult.success)
+            return (false, createResult.message);
+
+        RunScCommand($"description {ServiceConstants.ServiceName} \"{ServiceConstants.ServiceDescription}\"");
+        
+        return IsServiceInstalled() 
+            ? (true, "Service installed successfully") 
+            : (false, "Service installation failed");
+    }
+
+    public static (bool success, string message) UninstallService()
+    {
+        if (!IsServiceInstalled())
+            return (true, "Service not installed");
+
+        if (IsServiceRunning())
+        {
+            var stopResult = StopServiceAsync().Result;
+            if (!stopResult)
+                return (false, "Failed to stop service");
+        }
+
+        var deleteResult = RunScCommand($"delete {ServiceConstants.ServiceName}");
+        if (!deleteResult.success)
+            return (false, deleteResult.message);
+
+        return (true, "Service uninstalled successfully");
+    }
+
+    private static (bool success, string message) RunScCommand(string args)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "sc.exe",
+                Arguments = args,
+                UseShellExecute = true,
+                Verb = IsRunningAsAdmin() ? "" : "runas",
+                CreateNoWindow = true
+            };
+            
+            var process = Process.Start(psi);
+            if (process == null)
+                return (false, "Failed to start sc.exe");
+            
+            process.WaitForExit(15000);
+            
+            return process.ExitCode == 0 
+                ? (true, "Success") 
+                : (false, $"Operation failed (error {process.ExitCode})");
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            return (false, "Cancelled - admin required");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Error: {ex.Message}");
+        }
+    }
+
     public static ServiceControllerStatus? GetServiceStatus()
     {
         try
