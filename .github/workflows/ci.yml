@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check for merge conflict markers
+      shell: pwsh
+      run: |
+        $conflicts = Get-ChildItem -Recurse -Include *.cs,*.csproj,*.axaml,*.json,*.xml,*.wxs | 
+          Select-String -Pattern '<<<<<<<|=======|>>>>>>>' -List
+        if ($conflicts) {
+          Write-Error "Merge conflict markers found:"
+          $conflicts | ForEach-Object { Write-Error $_.Path }
+          exit 1
+        }
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Check formatting
+      run: dotnet format --verify-no-changes --verbosity diagnostic || echo "::warning::Code formatting issues detected"
+
+    - name: Build
+      run: dotnet build -c Release --no-restore -warnaserror
+
+    - name: Publish Worker (verify)
+      run: |
+        dotnet publish NewtService.Worker -c Release -o publish-test `
+          -p:PublishSingleFile=true `
+          -p:SelfContained=true `
+          -r win-x64
+
+    - name: Publish Tray (verify)
+      run: |
+        dotnet publish NewtService.Tray -c Release -o publish-test `
+          -p:PublishSingleFile=true `
+          -p:SelfContained=true `
+          -r win-x64
+
