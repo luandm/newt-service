@@ -19,15 +19,29 @@ public class NewtUpdater : IDisposable
     {
         try
         {
-            var releases = await _httpClient.GetFromJsonAsync<List<GitHubRelease>>(
-                "https://api.github.com/repos/fosrl/newt/releases");
+            var response = await _httpClient.GetAsync("https://api.github.com/repos/fosrl/newt/releases");
+            if (!response.IsSuccessStatusCode)
+            {
+                Log($"GitHub API error: {response.StatusCode}");
+                return null;
+            }
+            
+            var releases = await response.Content.ReadFromJsonAsync<List<GitHubRelease>>();
             
             if (releases == null || releases.Count == 0)
+            {
+                Log("No releases found");
                 return null;
+            }
 
-            return includePrerelease 
+            var release = includePrerelease 
                 ? releases.FirstOrDefault() 
                 : releases.FirstOrDefault(r => !r.Prerelease);
+                
+            if (release != null)
+                Log($"Found release: {release.TagName}");
+                
+            return release;
         }
         catch (Exception ex)
         {
@@ -71,8 +85,8 @@ public class NewtUpdater : IDisposable
             Log($"Downloading {asset.Name}...");
             await DownloadFileAsync(asset.DownloadUrl, tempPath, progress);
             
-            Log("Extracting...");
-            await ExtractAsync(tempPath, ServiceConstants.AppDataPath);
+            Log("Installing...");
+            File.Copy(tempPath, ServiceConstants.NewtExecutablePath, overwrite: true);
             
             File.WriteAllText(ServiceConstants.VersionFilePath, release.TagName);
             
@@ -97,18 +111,41 @@ public class NewtUpdater : IDisposable
             _ => "amd64"
         };
         
-        var pattern = $"newt_windows_{arch}";
-        return release.Assets.FirstOrDefault(a => 
-            a.Name.Contains(pattern, StringComparison.OrdinalIgnoreCase) && 
-            a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+        var expectedName = $"newt_windows_{arch}.exe";
+        
+        if (release.Assets?.Count > 0)
+        {
+            Log($"Available assets: {string.Join(", ", release.Assets.Select(a => a.Name))}");
+        }
+        else
+        {
+            Log("No assets in release");
+            return null;
+        }
+        
+        var asset = release.Assets.FirstOrDefault(a => 
+            a.Name.Equals(expectedName, StringComparison.OrdinalIgnoreCase));
+            
+        if (asset == null)
+            Log($"No asset matching '{expectedName}'");
+        else
+            Log($"Selected asset: {asset.Name}");
+            
+        return asset;
     }
 
     private async Task DownloadFileAsync(string url, string destination, IProgress<double>? progress)
     {
+        Log($"Downloading from: {url}");
+        
         using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Download failed: {response.StatusCode}");
+        }
         
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
+        Log($"Download size: {totalBytes / 1024 / 1024:F1} MB");
         
         await using var contentStream = await response.Content.ReadAsStreamAsync();
         await using var fileStream = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
@@ -125,17 +162,15 @@ public class NewtUpdater : IDisposable
             if (totalBytes > 0)
                 progress?.Report((double)totalRead / totalBytes * 100);
         }
+        
+        Log("Download complete");
     }
 
-    private async Task ExtractAsync(string zipPath, string destination)
+    private void Log(string message)
     {
-        await Task.Run(() =>
-        {
-            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, destination, overwriteFiles: true);
-        });
+        AppLogger.Info($"[Updater] {message}");
+        OnLog?.Invoke(message);
     }
-
-    private void Log(string message) => OnLog?.Invoke(message);
 
     public void Dispose() => _httpClient.Dispose();
 }

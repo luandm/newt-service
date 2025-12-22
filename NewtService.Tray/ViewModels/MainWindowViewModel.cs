@@ -100,10 +100,13 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public ICommand CheckUpdateCommand { get; }
     public ICommand CheckAppUpdateCommand { get; }
     public ICommand OpenGitHubCommand { get; }
-    public ICommand OpenLogsCommand { get; }
+    public ICommand OpenNewtLogsCommand { get; }
+    public ICommand OpenAppLogsCommand { get; }
 
     public MainWindowViewModel()
     {
+        AppLogger.Info("MainWindow opened");
+        
         StartCommand = new AsyncRelayCommand(StartServiceAsync, () => IsInstalled && !IsRunning);
         StopCommand = new AsyncRelayCommand(StopServiceAsync, () => IsInstalled && IsRunning);
         RestartCommand = new AsyncRelayCommand(RestartServiceAsync, () => IsInstalled && IsRunning);
@@ -112,7 +115,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         CheckUpdateCommand = new AsyncRelayCommand(CheckOrInstallNewtUpdateAsync);
         CheckAppUpdateCommand = new AsyncRelayCommand(CheckOrInstallAppUpdateAsync);
         OpenGitHubCommand = new RelayCommand(OpenGitHub);
-        OpenLogsCommand = new RelayCommand(OpenLogs);
+        OpenNewtLogsCommand = new RelayCommand(OpenNewtLogs);
+        OpenAppLogsCommand = new RelayCommand(OpenAppLogs);
 
         LoadConfig();
         UpdateStatus();
@@ -166,6 +170,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task SaveConfigAsync()
     {
+        AppLogger.Info("Saving config...");
+        
         var config = new NewtConfig
         {
             Endpoint = string.IsNullOrWhiteSpace(Endpoint) ? null : Endpoint.Trim(),
@@ -173,11 +179,13 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             Secret = string.IsNullOrWhiteSpace(Secret) ? null : Secret.Trim()
         };
         config.Save();
+        AppLogger.Info("Config saved");
 
         // Auto-install service if config is valid and service not installed
         if (!IsInstalled && !string.IsNullOrEmpty(config.Endpoint) && 
             !string.IsNullOrEmpty(config.Id) && !string.IsNullOrEmpty(config.Secret))
         {
+            AppLogger.Info("Service not installed, initiating install...");
             await InstallServiceAsync();
         }
     }
@@ -188,17 +196,32 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         if (!File.Exists(ServiceConstants.NewtExecutablePath))
         {
             Status = "Downloading Newt...";
+            AppLogger.Info("Newt.exe not found, downloading...");
+            
             using var updater = new NewtUpdater();
+            updater.OnLog += msg => Status = msg;
+            
             var release = await updater.GetLatestReleaseAsync();
-            if (release != null)
+            if (release == null)
             {
-                await updater.DownloadAndInstallAsync(release);
+                Status = "Failed to fetch release info";
+                AppLogger.Error("Failed to fetch release info from GitHub");
+                return;
             }
+            
+            var success = await updater.DownloadAndInstallAsync(release);
+            if (!success)
+            {
+                AppLogger.Error($"Download failed. Status: {Status}");
+                return;
+            }
+            AppLogger.Info("Newt.exe downloaded successfully");
         }
 
         if (!File.Exists(ServiceConstants.NewtExecutablePath))
         {
-            Status = "Download failed";
+            Status = "Newt.exe not found after download";
+            AppLogger.Error("Newt.exe still not found after download attempt");
             return;
         }
 
@@ -206,25 +229,31 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         if (exePath == null)
         {
             Status = "Service exe not found";
+            AppLogger.Error("Worker exe not found");
             return;
         }
 
         Status = "Installing service...";
+        AppLogger.Info($"Installing service from: {exePath}");
         
         var result = ServiceControlHelper.InstallService(exePath);
         if (!result.success)
         {
             Status = result.message;
+            AppLogger.Error($"Service install failed: {result.message}");
             return;
         }
         
+        AppLogger.Info("Service installed successfully");
         UpdateStatus();
         
         if (IsInstalled)
         {
             Status = "Starting service...";
+            AppLogger.Info("Starting service...");
             await ServiceControlHelper.StartServiceAsync();
             UpdateStatus();
+            AppLogger.Info($"Service status: {Status}");
         }
     }
 
@@ -389,9 +418,14 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         });
     }
 
-    private void OpenLogs()
+    private void OpenNewtLogs()
     {
         NewtLogger.OpenLogFile();
+    }
+
+    private void OpenAppLogs()
+    {
+        AppLogger.OpenLogFile();
     }
 
     private string? GetWorkerExePath()

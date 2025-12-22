@@ -33,6 +33,10 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            AppLogger.Info("=== NewtService Tray starting ===");
+            AppLogger.Info($"Version: {AppUpdater.GetCurrentVersion()}");
+            AppLogger.Info($"BaseDir: {AppContext.BaseDirectory}");
+            
             SetupTrayIcon();
             
             _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
@@ -47,12 +51,14 @@ public partial class App : Application
 
             if (Program.ShowConfigOnStartup)
             {
+                AppLogger.Info("Showing config on startup");
                 Dispatcher.UIThread.Post(ShowMainWindow, DispatcherPriority.Background);
             }
 
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.Exit += (_, _) =>
             {
+                AppLogger.Info("=== NewtService Tray shutting down ===");
                 _statusTimer?.Stop();
                 _midnightCheckTimer?.Stop();
                 _trayIcon?.Dispose();
@@ -75,6 +81,8 @@ public partial class App : Application
         if (_isDownloading) return;
         _isDownloading = true;
 
+        AppLogger.Info("Starting Newt download...");
+        
         try
         {
             Directory.CreateDirectory(ServiceConstants.AppDataPath);
@@ -86,23 +94,28 @@ public partial class App : Application
             
             if (release == null)
             {
+                AppLogger.Error("Failed to get release info");
                 ShowWindowsNotification("Newt VPN", "Failed to download Newt client. Check your internet connection.");
                 return;
             }
 
+            AppLogger.Info($"Downloading release: {release.TagName}");
             var success = await updater.DownloadAndInstallAsync(release);
             
             if (success)
             {
+                AppLogger.Info($"Newt {release.TagName} installed successfully");
                 ShowWindowsNotification("Newt VPN", $"Newt {release.TagName} installed successfully.");
             }
             else
             {
+                AppLogger.Error("Failed to install Newt client");
                 ShowWindowsNotification("Newt VPN", "Failed to install Newt client.");
             }
         }
         catch (Exception ex)
         {
+            AppLogger.Error($"Download exception: {ex.Message}");
             ShowWindowsNotification("Newt VPN", $"Error: {ex.Message}");
         }
         finally

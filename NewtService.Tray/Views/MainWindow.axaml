@@ -127,7 +127,14 @@
 
         <!-- Footer -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20" Margin="0,10,0,0">
-            <Button Classes="link" Content="Open Logs" Command="{Binding OpenLogsCommand}"/>
+            <Button Classes="link" Content="Open Logs">
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuItem Header="App Logs" Command="{Binding OpenAppLogsCommand}"/>
+                        <MenuItem Header="Newt Logs" Command="{Binding OpenNewtLogsCommand}"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
             <Button Classes="link" Content="NewtService" Command="{Binding OpenGitHubCommand}"/>
         </StackPanel>
     </Grid>
