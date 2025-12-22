@@ -81,6 +81,11 @@ public class NewtWorker : BackgroundService
 
     private void StartNewt()
     {
+        _logger.LogInformation("Config - Endpoint: {Endpoint}, Id: {Id}, Secret: {Secret}", 
+            _config.Endpoint ?? "(null)", 
+            _config.Id ?? "(null)", 
+            string.IsNullOrEmpty(_config.Secret) ? "(null)" : "[redacted]");
+        
         var args = _config.BuildCommandLineArgs();
         _logger.LogInformation("Starting newt with args: {Args}", string.Join(" ", args));
         _processManager.Start(args);

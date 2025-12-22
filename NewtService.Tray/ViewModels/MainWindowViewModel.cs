@@ -348,6 +348,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    public event Action? OnRequestExit;
+
     private async Task CheckOrInstallAppUpdateAsync()
     {
         if (_availableAppUpdate != null)
@@ -355,6 +357,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             AppUpdateButtonText = "Downloading...";
             
             using var updater = new AppUpdater();
+            updater.OnRequestExit += () => OnRequestExit?.Invoke();
+            
             var success = await updater.DownloadAndInstallAsync(_availableAppUpdate);
             
             if (!success)
@@ -363,7 +367,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                 await Task.Delay(2000);
                 updater.OpenReleasesPage();
             }
-            // App will restart via MSI installer
         }
         else
         {

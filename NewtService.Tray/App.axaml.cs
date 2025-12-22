@@ -384,14 +384,16 @@ public partial class App : Application
         ShowWindowsNotification("NewtService", "Downloading update...");
         
         using var updater = new AppUpdater();
+        updater.OnRequestExit += () => 
+        {
+            ShowWindowsNotification("NewtService", "Restarting for update...");
+            Dispatcher.UIThread.Post(() => 
+                (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown());
+        };
+        
         var success = await updater.DownloadAndInstallAsync(_availableAppUpdate);
         
-        if (success)
-        {
-            // The MSI installer will handle stopping/restarting
-            (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
-        }
-        else
+        if (!success)
         {
             ShowWindowsNotification("NewtService", "Update failed. Opening releases page...");
             updater.OpenReleasesPage();
@@ -514,9 +516,17 @@ public partial class App : Application
     {
         if (_mainWindow == null || !_mainWindow.IsVisible)
         {
+            var viewModel = new MainWindowViewModel();
+            viewModel.OnRequestExit += () =>
+            {
+                ShowWindowsNotification("NewtService", "Restarting for update...");
+                Dispatcher.UIThread.Post(() => 
+                    (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown());
+            };
+            
             _mainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel()
+                DataContext = viewModel
             };
             _mainWindow.Show();
         }

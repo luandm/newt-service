@@ -10,7 +10,10 @@ public class AppUpdater : IDisposable
     private const string ReleasesApi = "https://api.github.com/repos/memesalot/newt-service/releases/latest";
     private const string ReleasesUrl = "https://github.com/memesalot/newt-service/releases";
     
+    public static string StagingPath => Path.Combine(Path.GetTempPath(), "NewtServiceUpdate");
+    
     public event Action<string>? OnLog;
+    public event Action? OnRequestExit;
 
     public AppUpdater()
     {
@@ -35,12 +38,18 @@ public class AppUpdater : IDisposable
 
             var msiAsset = release.Assets.FirstOrDefault(a => 
                 a.Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase));
+            var trayAsset = release.Assets.FirstOrDefault(a => 
+                a.Name.Equals("NewtService.Tray.exe", StringComparison.OrdinalIgnoreCase));
+            var workerAsset = release.Assets.FirstOrDefault(a => 
+                a.Name.Equals("NewtService.Worker.exe", StringComparison.OrdinalIgnoreCase));
 
             return new AppRelease
             {
                 TagName = release.TagName,
                 Version = release.TagName.TrimStart('v'),
                 MsiDownloadUrl = msiAsset?.DownloadUrl,
+                TrayDownloadUrl = trayAsset?.DownloadUrl,
+                WorkerDownloadUrl = workerAsset?.DownloadUrl,
                 ReleaseUrl = ReleasesUrl
             };
         }
@@ -64,18 +73,26 @@ public class AppUpdater : IDisposable
 
     public async Task<bool> DownloadAndInstallAsync(AppRelease release, IProgress<double>? progress = null)
     {
-        if (string.IsNullOrEmpty(release.MsiDownloadUrl))
-        {
-            Log("No MSI download available");
-            return false;
-        }
+        var appDir = AppContext.BaseDirectory;
+        var isMsiInstall = File.Exists(Path.Combine(appDir, "unins000.exe")) || 
+                          appDir.Contains("Program Files", StringComparison.OrdinalIgnoreCase);
 
+        if (isMsiInstall && !string.IsNullOrEmpty(release.MsiDownloadUrl))
+        {
+            return await InstallViaMsiAsync(release, progress);
+        }
+        
+        return await InstallViaStagingAsync(release, progress);
+    }
+
+    private async Task<bool> InstallViaMsiAsync(AppRelease release, IProgress<double>? progress)
+    {
         try
         {
             var tempPath = Path.Combine(Path.GetTempPath(), "NewtServiceSetup.msi");
             
             Log("Downloading update...");
-            await DownloadFileAsync(release.MsiDownloadUrl, tempPath, progress);
+            await DownloadFileAsync(release.MsiDownloadUrl!, tempPath, progress);
             
             Log("Starting installer...");
             Process.Start(new ProcessStartInfo
@@ -90,6 +107,53 @@ public class AppUpdater : IDisposable
         catch (Exception ex)
         {
             Log($"Update failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> InstallViaStagingAsync(AppRelease release, IProgress<double>? progress)
+    {
+        if (string.IsNullOrEmpty(release.TrayDownloadUrl) || string.IsNullOrEmpty(release.WorkerDownloadUrl))
+        {
+            Log("Missing exe download URLs, falling back to MSI");
+            if (!string.IsNullOrEmpty(release.MsiDownloadUrl))
+                return await InstallViaMsiAsync(release, progress);
+            return false;
+        }
+
+        try
+        {
+            if (Directory.Exists(StagingPath))
+                Directory.Delete(StagingPath, true);
+            Directory.CreateDirectory(StagingPath);
+
+            var trayPath = Path.Combine(StagingPath, "NewtService.Tray.exe");
+            var workerPath = Path.Combine(StagingPath, "NewtService.Worker.exe");
+
+            Log("Downloading Tray...");
+            await DownloadFileAsync(release.TrayDownloadUrl, trayPath, progress);
+            
+            Log("Downloading Worker...");
+            await DownloadFileAsync(release.WorkerDownloadUrl, workerPath, progress);
+
+            Log("Applying update...");
+            var appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            var pid = Environment.ProcessId;
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = trayPath,
+                Arguments = $"--apply-update \"{appDir}\" {pid}",
+                UseShellExecute = true,
+                WorkingDirectory = StagingPath
+            });
+
+            OnRequestExit?.Invoke();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"Staging update failed: {ex.Message}");
             return false;
         }
     }
@@ -151,6 +215,8 @@ public class AppRelease
     public string TagName { get; set; } = "";
     public string Version { get; set; } = "";
     public string? MsiDownloadUrl { get; set; }
+    public string? TrayDownloadUrl { get; set; }
+    public string? WorkerDownloadUrl { get; set; }
     public string ReleaseUrl { get; set; } = "";
 }
 

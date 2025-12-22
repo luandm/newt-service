@@ -24,6 +24,9 @@ public static class ServiceControlHelper
 
         RunScCommand($"description {ServiceConstants.ServiceName} \"{ServiceConstants.ServiceDescription}\"");
         
+        // Wait for SCM to register the service
+        Thread.Sleep(1000);
+        
         return IsServiceInstalled() 
             ? (true, "Service installed successfully") 
             : (false, "Service installation failed");
@@ -112,9 +115,22 @@ public static class ServiceControlHelper
             if (sc.Status == ServiceControllerStatus.Running)
                 return true;
 
-            sc.Start();
-            await Task.Run(() => sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(timeoutSeconds)));
-            return sc.Status == ServiceControllerStatus.Running;
+            // Try direct start first (works if already admin)
+            try
+            {
+                sc.Start();
+                await Task.Run(() => sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(timeoutSeconds)));
+                return sc.Status == ServiceControllerStatus.Running;
+            }
+            catch
+            {
+                // Fall back to sc.exe with UAC
+                var result = RunScCommand($"start {ServiceConstants.ServiceName}");
+                if (!result.success) return false;
+                
+                await WaitForStatusAsync(ServiceControllerStatus.Running, timeoutSeconds);
+                return IsServiceRunning();
+            }
         }
         catch
         {
@@ -130,13 +146,37 @@ public static class ServiceControlHelper
             if (sc.Status == ServiceControllerStatus.Stopped)
                 return true;
 
-            sc.Stop();
-            await Task.Run(() => sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(timeoutSeconds)));
-            return sc.Status == ServiceControllerStatus.Stopped;
+            // Try direct stop first (works if already admin)
+            try
+            {
+                sc.Stop();
+                await Task.Run(() => sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(timeoutSeconds)));
+                return sc.Status == ServiceControllerStatus.Stopped;
+            }
+            catch
+            {
+                // Fall back to sc.exe with UAC
+                var result = RunScCommand($"stop {ServiceConstants.ServiceName}");
+                if (!result.success) return false;
+                
+                await WaitForStatusAsync(ServiceControllerStatus.Stopped, timeoutSeconds);
+                return GetServiceStatus() == ServiceControllerStatus.Stopped;
+            }
         }
         catch
         {
             return false;
+        }
+    }
+
+    private static async Task WaitForStatusAsync(ServiceControllerStatus targetStatus, int timeoutSeconds)
+    {
+        var deadline = DateTime.Now.AddSeconds(timeoutSeconds);
+        while (DateTime.Now < deadline)
+        {
+            var status = GetServiceStatus();
+            if (status == targetStatus) return;
+            await Task.Delay(500);
         }
     }
 
