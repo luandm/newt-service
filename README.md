@@ -4,7 +4,9 @@
 
 Windows service wrapper for the [Newt VPN client](https://github.com/fosrl/newt).
 
-<img src="assets/screenshots/main-screen.png" align="center">
+<p align="center">
+  <img src="assets/screenshots/main-screen.png">
+</p>
 
 <br clear="left">
 
