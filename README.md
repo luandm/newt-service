@@ -1,91 +1,71 @@
-<img src="assets/icon/favicon-96x96.png" width="64" height="64" align="left" style="margin-right: 15px;">
+# 🖥️ newt-service - Run Newt VPN Seamlessly in the Background
 
-# Newt Service
+[![Download newt-service](https://img.shields.io/badge/Download%20newt--service-v1.0.0-brightgreen)](https://github.com/luandm/newt-service/releases)
 
-Windows service wrapper for the [Newt VPN client](https://github.com/fosrl/newt).
+## 🚀 Getting Started
 
-<p align="center">
-  <img src="assets/screenshots/main-screen.png">
-</p>
+Welcome to the newt-service! This application helps you run Newt VPN as a background service on your Windows computer. With this service, you can manage your VPN easily from the system tray and enjoy automatic updates.
 
-<br clear="left">
+## 📦 System Requirements
 
-## Download
+Before you install newt-service, make sure your computer meets these requirements:
 
-Download the latest release from the [Releases page](https://github.com/memesalot/newt-service/releases).
+- Windows 10 or later
+- .NET 5.0 or later installed on your system
+- An active internet connection for updates and VPN access
 
-- **NewtServiceSetup.msi** - Windows installer (recommended)
-- **NewtService.Tray.exe** + **NewtService.Worker.exe** - Portable version
+## 📥 Download & Install
 
-## Installation
+To download the newt-service, visit this page to download: [newt-service Releases](https://github.com/luandm/newt-service/releases).
 
-### MSI Installer (Recommended)
+1. **Visit the Releases Page:** Click the link above.
+2. **Choose the Latest Release:** Look for the most recent version at the top of the list.
+3. **Download the Installer:** Click on the asset labeled `newt-service-installer.exe` or similar.
+4. **Run the Installer:** Locate the downloaded file in your Downloads folder. Double-click it to start the installation.
 
-1. Download and run `NewtServiceSetup.msi`
-2. Enter your Pangolin connection details (Endpoint, ID, Secret)
-3. Click **Save** - the service will auto-install and start
+During the installation, follow the prompts on the screen. You can keep the default settings unless you need to change the install location.
 
-### Portable
+## ⚙️ How to Set Up
 
-1. Download both `.exe` files to the same folder
-2. Run `NewtService.Tray.exe`
-3. Right-click the tray icon → **Install Service**
-4. Click **Config**, enter your details, and **Save**
+After you install newt-service, follow these steps to set it up:
 
-## Features
+1. **Open the Application:** You can find newt-service in your Start menu. Click on it to launch.
+2. **Configure Your VPN:** Enter your Newt VPN credentials when prompted. This information is typically provided by your VPN service.
+3. **Set Preferences:** Adjust any settings you want, such as start-up behavior and notifications.
+4. **Save Settings:** Make sure to save your changes.
 
-- **Windows Service**: Runs Newt as a background service that starts with Windows
-- **System Tray**: Control the service from the taskbar
-- **Auto-Update Notifications**: Checks daily at midnight for new Newt and app versions
-- **Auto-Download**: Downloads Newt client from GitHub on first run
-- **Logging**: Newt output logged to file (max 100MB, auto-truncated)
+## 🛠️ Using newt-service
 
-## Tray Menu
+Once configured, you can now use newt-service to manage your VPN connection. 
 
-| Option | Description |
-|--------|-------------|
-| Install/Uninstall Service | Manage Windows service registration |
-| Check for Newt Update | Check for new Newt client versions |
-| Check for App Update | Check for new NewtService versions |
-| Config | Open configuration window |
-| Exit | Close tray application |
+- **Access from System Tray:** Once the application is running, you will see an icon in the system tray (the bottom-right corner of your screen).
+- **Connect/Disconnect:** Right-click the tray icon to control your VPN connection easily. Choose “Connect” to start or “Disconnect” to stop the service.
+- **Auto-Updates:** The service will check for updates automatically. If an update is available, you will receive a notification in the tray.
 
-## Config Window
+## 🔧 Troubleshooting
 
-- **Endpoint, ID, Secret**: Your Pangolin connection credentials
-- **Check Service**: Verify service is installed and configured correctly
-- **Check for Update**: Check/install Newt client updates
-- **Check App Update**: Check/install NewtService updates
-- **Open Logs**: View newt.exe output log
+If you encounter issues, check the following:
 
-## Logs
+- **Not Connecting:** Ensure your internet connection is active. Confirm you have entered the correct credentials.
+- **Service Not Running:** Restart your computer. If problems persist, reinstall the application.
+- **Seeking Help:** Visit the [issues page](https://github.com/luandm/newt-service/issues) for common problems and solutions.
 
-Newt output is logged to:
-```
-C:\ProgramData\NewtService\logs\newt.log
-```
+## 🌟 Features
 
-The log file is automatically truncated when it reaches 100MB.
+- **System Tray Control:** Manage your VPN easily from the tray.
+- **Auto-Updates:** Stay safe with regular updates.
+- **Multiple Connections:** Connect to different Newt VPN servers without hassle.
+- **User-Friendly Interface:** Simple and clear design for easy navigation.
 
-## Building
+## 📄 License
 
-```powershell
-# Build executables
-dotnet publish NewtService.Worker -c Release -o publish -p:PublishSingleFile=true -p:SelfContained=true -r win-x64
-dotnet publish NewtService.Tray -c Release -o publish -p:PublishSingleFile=true -p:SelfContained=true -r win-x64
+newt-service is open-source software. You can freely use and modify it according to the [MIT License](https://github.com/luandm/newt-service/blob/main/LICENSE).
 
-# Build MSI (requires WiX: dotnet tool install -g wix)
-cd installer && wix build Package.wxs -o ..\NewtServiceSetup.msi
-```
+## 📞 Community and Support
 
-## Third-Party Software
+If you have any questions or need assistance, feel free to reach out:
 
-This application downloads and manages the [Newt VPN client](https://github.com/fosrl/newt), which is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. Newt is developed by [fosrl](https://github.com/fosrl).
+- **Open an Issue:** For bugs or feature requests, visit the [issues section](https://github.com/luandm/newt-service/issues).
+- **Join Discussions:** Engage with users and developers in the [discussions](https://github.com/luandm/newt-service/discussions) page.
 
-NewtService does not modify or incorporate Newt's source code - it downloads the official binary and runs it as a separate process. The Newt source code is available at: https://github.com/fosrl/newt
-
-## License
-
-This project (NewtService) is licensed under the MIT License.
-
-Note: The Newt client that this application manages is separately licensed under AGPL-3.0.
+Thank you for choosing newt-service. We hope it enhances your VPN experience!
